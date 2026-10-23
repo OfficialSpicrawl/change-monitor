@@ -1,0 +1,43 @@
+# Weekly real run against the Spicrawl API, so the README output stays true.
+# Skipped (not failed) when the demo key is low on credits; the daily credits workflow is what alerts.
+name: live-demo
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays 07:00 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  credits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ok: ${{ steps.check.outputs.ok }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Exits 1 when credits are low (or the secret is missing); continue-on-error keeps the job green with ok=false.
+      - id: check
+        continue-on-error: true
+        run: node scripts/check-credits.mjs
+        env:
+          SPICRAWL_API_KEY: ${{ secrets.SPICRAWL_API_KEY }}
+          MIN_CREDITS: 100
+      - if: steps.check.outcome == 'failure'
+        run: echo '::warning::Live demo skipped, demo key has fewer than 100 credits or SPICRAWL_API_KEY is not set.'
+  demo:
+    needs: credits
+    if: needs.credits.outputs.ok == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --omit=dev
+      - run: node monitor.mjs https://example.com
+        env:
+          SPICRAWL_API_KEY: ${{ secrets.SPICRAWL_API_KEY }}

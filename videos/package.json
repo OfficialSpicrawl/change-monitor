@@ -1,0 +1,26 @@
+{
+  "name": "change-monitor-videos",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Remotion product film for the Spicrawl change monitor. Not part of the shipped tool.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "narration": "scripts/narration.sh",
+    "stills": "bun scripts/stills.ts",
+    "render": "bun scripts/render.ts"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.538",
+    "@remotion/cli": "4.0.538",
+    "@remotion/fonts": "4.0.538",
+    "@remotion/renderer": "4.0.538",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}

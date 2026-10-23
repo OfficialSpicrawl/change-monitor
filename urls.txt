@@ -1,0 +1,5 @@
+# One URL per line. Lines starting with # are ignored.
+https://example.com
+https://www.iana.org/help/example-domains
+# The Wikipedia main page changes daily, so this one shows what an alert looks like.
+https://en.wikipedia.org/wiki/Main_Page

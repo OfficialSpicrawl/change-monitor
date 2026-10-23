@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>change-monitor social preview</title>
+<style>
+@font-face{font-family:"Righteous";src:url("file:///home/roy/Documents/webora-ui/landing/node_modules/@fontsource/righteous/files/righteous-latin-400-normal.woff2") format("woff2");font-weight:400}
+@font-face{font-family:"Inter";src:url("file:///home/roy/Documents/webora-ui/landing/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");font-weight:100 900}
+@font-face{font-family:"JetBrains Mono";src:url("file:///home/roy/Documents/webora-ui/landing/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2") format("woff2");font-weight:100 800}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1280px;height:640px;overflow:hidden;background:#16181B}
+body{padding:40px;font-family:Inter,sans-serif;color:#F9F9F9;-webkit-font-smoothing:antialiased}
+.wrap{display:flex;gap:44px;height:560px}
+.left{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}
+.main{flex:1;display:flex;flex-direction:column;justify-content:center}
+h1{font-size:60px;line-height:1.05;font-weight:700;letter-spacing:-0.035em;white-space:nowrap}
+.pitch{margin-top:22px;font-size:29px;line-height:1.28;font-weight:500;letter-spacing:-0.01em;text-wrap:balance}
+.urls{margin-top:34px;font-size:21px;line-height:1.55;font-weight:500;color:#A9ADB2;letter-spacing:-0.005em}
+.foot{display:flex;align-items:center;gap:12px;font-size:20px;font-weight:500;color:#A9ADB2;height:36px}
+.foot img{height:30px;display:block}
+.foot b{font-family:Righteous,sans-serif;font-weight:400;font-size:27px;color:#F9F9F9;letter-spacing:.01em;margin-left:-2px}
+.term{width:706px;align-self:center;background:#1E2124;border:1px solid #2E3135;border-radius:14px;overflow:hidden}
+.bar{display:flex;align-items:center;gap:8px;height:46px;padding:0 20px;border-bottom:1px solid #2E3135}
+.bar i{width:12px;height:12px;border-radius:50%;background:#2E3135;border:1px solid #A9ADB2;opacity:.55}
+.bar span{margin-left:10px;font:500 15px "JetBrains Mono",monospace;color:#A9ADB2}
+.code{padding:22px 24px 24px;font:500 20px/1.55 "JetBrains Mono",monospace;font-variant-ligatures:none;white-space:pre}
+.l{padding:0 8px;margin:0 -8px;border-radius:4px}
+.pr{color:#A9ADB2;font-weight:400}
+.p,.c,.w{color:#F9F9F9}.m{color:#A9ADB2}
+.r{color:#A9ADB2;opacity:.62}
+.a{color:#F9F9F9;font-weight:700;background:#2E3135}
+.p{font-weight:700}.c{font-weight:700}
+</style></head><body>
+<div class="wrap">
+ <div class="left">
+  <div class="main">
+   <h1>change-monitor</h1>
+   <p class="pitch">Website change detection with Discord and Slack alerts</p>
+   <div class="urls">github.com/OfficialSpicrawl/change-monitor<br>change-monitor.spicrawl.com</div>
+  </div>
+  <div class="foot"><span>Built on</span><img src="file:///home/roy/Documents/webora-ui/landing/public/spicrawl%20assets/svg/Spicrawl%20logo%20dark.svg" alt=""><b>Spicrawl</b></div>
+ </div>
+ <div class="term">
+  <div class="bar"><i></i><i></i><i></i><span>change-monitor</span></div>
+  <div class="code"><div class="l p"><span class="pr">$</span> node monitor.mjs</div><div class="l w">Changed: https://example.com (+1 -2 lines)</div><div class="l r">- This domain is for docs (old wording).</div><div class="l r">- An old line that was removed.</div><div class="l a">+ This domain is for documentation examples.</div><div class="l m">Credits used this run: 1</div></div>
+ </div>
+</div>
+</body></html>

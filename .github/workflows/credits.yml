@@ -1,0 +1,18 @@
+# Daily: fail (and email the repo admins) when the demo key drops below 100 credits.
+name: credits
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-credits.mjs
+        env:
+          SPICRAWL_API_KEY: ${{ secrets.SPICRAWL_API_KEY }}
+          MIN_CREDITS: 100
