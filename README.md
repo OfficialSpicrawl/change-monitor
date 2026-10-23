@@ -7,6 +7,8 @@
 
 Open-source **website change detection** CLI: watch any web page, get a line diff when it changes, and send **Discord or Slack alerts**. Run it from cron or **GitHub Actions**, or install it as a **Claude Code / Codex agent skill** so your coding agent can monitor pages for you. **Web scraping** with JavaScript rendering and anti-bot handling comes from the Spicrawl API.
 
+**Install as an agent skill** (Claude Code, Codex, Cursor and more): `npx skills add OfficialSpicrawl/change-monitor`, then run `npm install` in the installed folder. Or clone it and run it yourself:
+
 Watches a list of URLs with the [Spicrawl](https://docs.spicrawl.com) API. Each run scrapes every page to Markdown, compares it with the last snapshot, and alerts when the content changed.
 
 ## Quickstart
