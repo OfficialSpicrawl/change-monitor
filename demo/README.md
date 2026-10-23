@@ -1,6 +1,6 @@
 # Live demo (Cloudflare Worker)
 
-A one-page demo of the change monitor, served at https://change-monitor.spicrawl.com. A visitor pastes a URL and clicks **Check**. The Worker scrapes it with Spicrawl (the same call as `monitor.mjs`), keeps a snapshot in Workers KV, and shows `Baseline saved`, `Unchanged` or `Changed` with the line diff, plus the credits used and the engine.
+A one-page demo of the change monitor, served at https://change-monitor.spicrawl.com. A visitor pastes a URL and clicks **Check**. The Worker scrapes it with Spicrawl (the CLI's call, minus `mode: "auto"`: one plain fetch capped at 1 credit), keeps a snapshot in Workers KV, and shows `Baseline saved`, `Unchanged` or `Changed` with the line diff, plus the credits used and the engine.
 
 ```text
 demo/
@@ -38,7 +38,8 @@ Local mode needs no Cloudflare login. KV, the rate limiter, the Cache API and th
    ```
 
 4. Optional: for Cloudflare Web Analytics, add a site in the dashboard (dashboard > Web Analytics) and put its token in `vars.BEACON_TOKEN`. While it is empty the page has no beacon.
-5. Deploy:
+5. Optional but recommended for a public demo: Cloudflare Turnstile (see [Turnstile](#turnstile)).
+6. Deploy:
 
    ```sh
    npm run demo:deploy
@@ -52,22 +53,42 @@ The route is a Workers Custom Domain, so `spicrawl.com` must be a zone on the ac
 | `LIMITER` | Rate limit | 5 checks per 60 s per `CF-Connecting-IP`; `namespace_id` is any unique number |
 | `EVENTS` | Analytics Engine | dataset `spicrawl_demo_events`, created on the first write |
 | `BEACON_TOKEN` | var | Web Analytics token, empty = off |
-| `SPICRAWL_API_KEY` | secret | never returned or logged; error text is scrubbed of it |
+| `TURNSTILE_SITE_KEY` | var | Turnstile widget site key; Turnstile is on only when this and `TURNSTILE_SECRET` are both set |
+| `TURNSTILE_SECRET` | secret | Turnstile secret key, used server-side only |
+| `SPICRAWL_API_KEY` | secret | never returned or logged; Spicrawl error text is never returned, and log lines are scrubbed of the key |
 
 ## Guards
 
-- Only `http` and `https` URLs, 2048 characters at most. A bare `example.com` becomes `https://example.com/`.
-- Rejected before any credit is spent: `localhost`, every IP-literal host (IPv4, IPv6 and the decimal or hex spellings of 127.0.0.1, which includes 127.x, 10.x, 172.16-31.x and 192.168.x), single-label names, `*.local`, `*.internal`, `*.localhost`, `*.localdomain`, `*.lan`, and URLs with a username or password.
-- Rate limit: 429 with `Retry-After: 60`.
-- Credit guard: before scraping, the Worker reads `GET /v1/usage/summary`. If `allowance.remaining_micro / 1e6` is below 100 (and the allowance is not unlimited) it refuses with "The demo has used its credits for this month" and the clone commands. The derived number is cached for 60 seconds with the Cache API, so most requests make no summary call.
-- `POST /api/check` accepts only `application/json`, so another site cannot make a visitor's browser spend the demo's credits with a plain form post.
-- A target status of 400 or more is `Blocked/unavailable`: nothing is written to KV.
+The demo spends the credits of a paid key for anyone on the internet, so every check goes through these, in this order:
+
+- Rate limit: 5 checks per minute per visitor, `429` with `Retry-After: 60`. The key is `CF-Connecting-IP`; an IPv6 visitor is keyed on its /64 (the first four groups, with `::` expanded), because one IPv6 customer controls billions of addresses.
+- Request body: `POST /api/check` accepts only `application/json`, and only with a numeric `Content-Length` of 4096 or less (`411` without one, `413` over it), so a chunked request cannot skip the size check. Other sites cannot make a visitor's browser spend credits with a plain form post either.
+- URL: only `http` and `https`, 2048 characters at most; a bare `example.com` becomes `https://example.com/`. Rejected before any credit is spent: `localhost`, every IP-literal host (IPv4, IPv6 and the decimal or hex spellings of 127.0.0.1, which includes 127.x, 10.x, 172.16-31.x and 192.168.x), single-label names, `*.local`, `*.internal`, `*.localhost`, `*.localdomain`, `*.lan`, `*.home.arpa` (and `home.arpa` itself), and URLs with a username or password. Any number of trailing dots is stripped first, so `localhost..` is `localhost`.
+- Turnstile (optional): when configured, the token is verified with Cloudflare before anything else costs money. See [Turnstile](#turnstile).
+- Credit floor: before scraping, the Worker reads `GET /v1/usage/summary`. If `allowance.remaining_micro / 1e6` is below 100 (and the allowance is not unlimited) it refuses with "The demo has used its credits for this month" and the clone commands.
+- Pace guard: from the same summary, the Worker works out how far through the allowance month it is (`window_start` to `resets_at`) and refuses with "Today's share of the demo's credits is used up" (outcome `paced`) when the credits used are more than the share of the monthly limit that time has earned plus 5% of the limit. That keeps one busy day from eating the whole month. The floor and the pace guard fail closed: a summary with a missing or unreadable number refuses instead of letting the check through. An unlimited allowance has nothing to pace against, so only the per-check cap below applies.
+- The usage summary is cached for 60 seconds with the Cache API, under a synthetic key (`https://cache.internal/usage-summary`, never fetched), so most requests make no summary call. Only the numbers the guards need are cached.
+- Per-check cost cap: the scrape is a plain fetch (no `mode: "auto"`) with `max_cost: 1`. Spicrawl checks that ceiling before it runs anything and refuses a dearer request at 0 credits, so a visitor cannot pick a challenge-protected site that escalates to a browser engine (up to 8 credits, with 25 credits reserved while it runs). Such a site, or one that refuses a plain fetch, gets the `Blocked/unavailable` answer that points at the CLI, which still escalates automatically.
+- Only a target status of exactly `200` is stored or diffed. Anything else (403, 503, and also 202, 203, 206, which Spicrawl may bill at 0) is `Blocked/unavailable`, and nothing is written to KV.
+- Errors: Spicrawl's own error text is never returned. A visitor sees a fixed sentence and, for Spicrawl errors, the error code, for example `Spicrawl could not accept that URL. Check that it is a public web page (ERR::SECURITY::SSRF_BLOCKED).`
+- Headers: every response has `X-Content-Type-Options: nosniff`. The page's CSP has no `unsafe-inline`: the inline script and style carry a per-response nonce (`crypto.randomUUID`), and the page is sent with `Cache-Control: no-cache` so a shared cache cannot replay it. It allows Google Fonts and `static.cloudflareinsights.com` (the Web Analytics beacon), plus `challenges.cloudflare.com` for scripts and frames only while Turnstile is on.
+
+## Turnstile
+
+Off by default. To turn it on:
+
+1. In the Cloudflare dashboard open Turnstile and add a widget for `change-monitor.spicrawl.com` (managed mode is fine).
+2. Put the **site key** in `vars.TURNSTILE_SITE_KEY` in `demo/wrangler.jsonc`.
+3. Store the **secret key**: `npx wrangler secret put TURNSTILE_SECRET --config demo/wrangler.jsonc`.
+4. `npm run demo:deploy`.
+
+Turnstile is on only when both are set; with either missing the page has no widget and nothing is verified. While it is on, the page shows the widget above the Check button, the browser sends its token with each check, and the Worker verifies it against `https://challenges.cloudflare.com/turnstile/v0/siteverify` (with the visitor's address) after the URL has been validated and before the credit lookup or the scrape. A missing, rejected or expired token is a `403`; if the verification service cannot be reached the check is refused with a `503` rather than let through. Tokens work once, so the page resets the widget after every check.
 
 ## Things to know
 
 - Snapshots are shared. Two visitors who check the same URL compare against each other's snapshot, and the stored page text can be seen as a diff by anyone. The page says so.
 - Only the first 200 KB of a page is stored and compared.
-- Each check that is not blocked writes to KV (this refreshes the 7-day expiry). The Workers Free plan allows 1,000 KV writes per day. KV is eventually consistent, so a check from another location within about a minute can still see the older snapshot.
+- A snapshot is written to KV only when it is new or the page changed. A check that finds the page unchanged writes nothing (KV allows one write per second per key, and the Workers Free plan 1,000 writes a day), so a snapshot expires 7 days after the page last changed, not after the last check. If a write fails the visitor still gets the result; only the snapshot is lost. KV is eventually consistent, so a check from another location within about a minute can still see the older snapshot.
 - Diffs are a set difference of lines, as in the CLI: moved lines are invisible.
 
 ## Analytics
@@ -77,7 +98,7 @@ Every `/api/check` call writes one data point:
 | Field | Value |
 |---|---|
 | `blob1` | `change-monitor` |
-| `blob2` | outcome: `baseline`, `unchanged`, `changed`, `blocked`, `error`, `rate_limited`, `no_credits` or `invalid` |
+| `blob2` | outcome: `baseline`, `unchanged`, `changed`, `blocked`, `error`, `rate_limited`, `no_credits`, `paced` or `invalid` |
 | `blob3` | target host as parsed (also set when the URL was rejected) |
 | `blob4` | visitor country from `request.cf.country` |
 | `double1` | credits used |

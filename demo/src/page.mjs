@@ -1,5 +1,6 @@
 // The demo page: one HTML string, inline CSS and JS, no framework, no build step.
-// The worker swaps <!--BEACON--> for the Cloudflare Web Analytics tag when a token is set.
+// The worker swaps <!--BEACON--> for the Cloudflare Web Analytics tag when a token is set, <!--TURNSTILE-->
+// for the Turnstile widget when it is configured, and __NONCE__ for the per-response CSP nonce.
 
 export const REPO_URL = "https://github.com/OfficialSpicrawl/change-monitor";
 export const KEY_URL = "https://app.spicrawl.com";
@@ -26,7 +27,7 @@ export const PAGE = `<!doctype html>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Righteous&text=Spicrawl&display=swap">
-<style>
+<style nonce="__NONCE__">
 :root {
   --bg: #16181B;
   --card: #1E2124;
@@ -85,6 +86,7 @@ button:hover:not(:disabled) { background: var(--text); }
 button:disabled { cursor: progress; background: var(--card); color: var(--muted); border-color: var(--border); }
 @media (max-width: 520px) { .row { flex-direction: column; } input[type="text"] { flex: none; } button { width: 100%; } }
 .hint { color: var(--muted); font-size: 14px; margin: 10px 0 0; }
+.cf-turnstile { margin-top: 12px; }
 
 #result:not(:empty) { margin-top: 16px; }
 .badge {
@@ -93,7 +95,7 @@ button:disabled { cursor: progress; background: var(--card); color: var(--muted)
 }
 .badge.changed { background: #FFFFFF; color: var(--bg); border-color: #FFFFFF; }
 .badge.unchanged, .badge.baseline { border-color: var(--border); background: var(--bg); }
-.badge.blocked, .badge.error, .badge.rate_limited, .badge.no_credits, .badge.invalid { border-style: dashed; color: var(--muted); }
+.badge.blocked, .badge.error, .badge.rate_limited, .badge.no_credits, .badge.paced, .badge.invalid { border-style: dashed; color: var(--muted); }
 .target { margin: 12px 0 4px; font: 400 14px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .msg { margin: 8px 0 0; }
 .meta { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 14px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 14px; }
@@ -141,6 +143,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
         <input id="url" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="2048" placeholder="https://example.com" aria-describedby="hint">
         <button type="submit" id="go">Check</button>
       </div>
+      <!--TURNSTILE-->
       <p class="hint" id="hint">Public http(s) pages only. Limit: 5 checks per minute.</p>
     </form>
 
@@ -157,18 +160,18 @@ footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
     </section>
 
     <footer>
-      Snapshots are stored for 7 days, keyed by URL and shared by everyone who checks the same URL. Do not check pages you consider private.
+      Snapshots are kept for 7 days after the page last changed, keyed by URL and shared by everyone who checks the same URL. Do not check pages you consider private.
     </footer>
   </main>
 </div>
-<script>
+<script nonce="__NONCE__">
 (() => {
   const $ = (id) => document.getElementById(id);
   const form = $("form"), input = $("url"), go = $("go"), out = $("result");
   const LABEL = {
     baseline: "Baseline saved", unchanged: "Unchanged", changed: "Changed",
     blocked: "Blocked/unavailable", error: "Error", rate_limited: "Slow down",
-    no_credits: "Demo out of credits", invalid: "Check the URL",
+    no_credits: "Demo out of credits", paced: "Busy today", invalid: "Check the URL",
   };
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -182,7 +185,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
     if (d.status === "baseline") return "Saved as the baseline. Check this URL again later to see what changed.";
     if (d.status === "unchanged") return "The content matches the snapshot from " + when(d.previousCheckedAt) + ".";
     if (d.status === "changed") return "+" + d.diff.added + " -" + d.diff.removed + " lines since the snapshot from " + when(d.previousCheckedAt) + ".";
-    if (d.status === "blocked") return "The site answered with HTTP " + d.targetStatus + ", so this is a block page or an outage. Nothing was saved; your last good snapshot is untouched.";
+    if (d.status === "blocked") return (d.targetStatus ? "The site answered with HTTP " + d.targetStatus + ". Nothing was saved; your last good snapshot is untouched. " : "") + (d.message || "");
     return d.message || "Something went wrong.";
   }
 
@@ -227,11 +230,12 @@ footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
     go.disabled = true;
     go.textContent = "Checking...";
     out.setAttribute("aria-busy", "true");
+    const token = new FormData(form).get("cf-turnstile-response"); // only present when Turnstile is on
     try {
       const res = await fetch("/api/check", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, turnstile: token || undefined }),
       });
       let data;
       try { data = await res.json(); } catch { data = { status: "error", message: "Unexpected response from the demo (HTTP " + res.status + ")." }; }
@@ -239,6 +243,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
     } catch {
       render({ status: "error", message: "Could not reach the demo. Check your connection and try again." });
     } finally {
+      if (window.turnstile) window.turnstile.reset(); // a token works once
       go.disabled = false;
       go.textContent = "Check";
       out.removeAttribute("aria-busy");
