@@ -24,6 +24,7 @@ scripts/demo-build.mjs   builds demo/public
 |---|---|
 | `app.js` and `chunk-*.js` | `demo/client`, bundled with esbuild. The avatar library is its own chunk, loaded when the agent chat is near the viewport. |
 | `fonts/Geist-Variable.woff2`, `fonts/GeistMono-Variable.woff2` | the `geist` package (SIL OFL 1.1), self-hosted so the page makes no third-party request |
+| `fonts/Righteous-Latin.woff2` | the `@fontsource/righteous` package (SIL OFL 1.1), Latin subset, weight 400: the home page's H1 only |
 | `spicrawl.svg`, `og.png` | `videos/public/brand/wordmark.svg`, `launch/social-preview.png` |
 | `THIRD-PARTY.txt` | the licences of everything above that ships to the browser |
 
