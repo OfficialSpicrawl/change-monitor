@@ -15,7 +15,8 @@
   "analytics_engine_datasets": [{ "binding": "EVENTS", "dataset": "spicrawl_demo_events" }],
   // BEACON_TOKEN: Cloudflare Web Analytics token, empty = no beacon on the page.
   // TURNSTILE_SITE_KEY: Turnstile widget site key, empty = no Turnstile (it also needs the TURNSTILE_SECRET secret).
-  "vars": { "BEACON_TOKEN": "bca888544f144c47a442ee0c92f1ea2f", "OPENPANEL_CLIENT_ID": "aefb6c53-27d1-4191-875c-f1605b9e6f26", "OPENPANEL_API_URL": "https://op.yupcha.com/api", "TURNSTILE_SITE_KEY": "" }
+  "vars": { "TURNSTILE_SITE_KEY": "" }
+  // Secrets (not in code): `npx wrangler secret put <NAME>` for BEACON_TOKEN, OPENPANEL_CLIENT_ID and OPENPANEL_API_URL.
   // Secrets: `npx wrangler secret put SPICRAWL_API_KEY --config demo/wrangler.jsonc`
   //          `npx wrangler secret put TURNSTILE_SECRET --config demo/wrangler.jsonc` (optional)
 }
