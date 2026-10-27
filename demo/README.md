@@ -1,16 +1,33 @@
 # Live demo (Cloudflare Worker)
 
-A one-page demo of the change monitor, served at https://change-monitor.spicrawl.com. A visitor pastes a URL and clicks **Check**. The Worker scrapes it with Spicrawl (the CLI's call, minus `mode: "auto"`: one plain fetch capped at 1 credit), keeps a snapshot in Workers KV, and shows `Baseline saved`, `Unchanged` or `Changed` with the line diff, plus the credits used and the engine.
+A one-page demo of the change monitor, served at https://change-monitor.spicrawl.com. A visitor types a URL at the terminal prompt and presses **Run**. The Worker scrapes it with Spicrawl (the CLI's call, minus `mode: "auto"`: one plain fetch capped at 1 credit), keeps a snapshot in Workers KV, and answers `Baseline saved`, `Unchanged` or `Changed` with the line diff, plus the credits used. The page also plays a scripted sample run, shows the install command and the "Try Spicrawl free" link, and has a "Star on GitHub" button whose count is fetched from the GitHub API in the browser.
 
 ```text
 demo/
-  wrangler.jsonc     Worker config and bindings
-  src/worker.mjs     GET / -> page, POST /api/check -> JSON
-  src/page.mjs       the HTML page (inline CSS and JS, no build step)
+  wrangler.jsonc     Worker config, bindings and the static assets folder
+  DESIGN.md          why the page looks the way it does (read before changing it)
+  src/worker.mjs     GET / -> page, GET /llms.txt, POST /api/check -> JSON, anything else -> the 404 page
+  src/page.mjs       the HTML and CSS (one string, inline CSS, no framework)
+  client/            the page's script, bundled to public/app.js: the live check, the sample run, the effects
+  public/            static assets: built files (git-ignored) plus robots.txt and sitemap.xml
   test/worker.test.mjs
+scripts/demo-build.mjs   builds demo/public
 ```
 
 `worker.mjs` imports `diffLines` straight from `../../monitor.mjs`. The CLI module bundles cleanly under `nodejs_compat` (its `node:fs` imports are never called in the Worker), so there is no second copy of the diff code.
+
+## The page's script and assets
+
+`npm run demo:build` (run by `demo:dev` and `demo:deploy`) writes `demo/public/`, which the Worker serves as [static assets](https://developers.cloudflare.com/workers/static-assets/) before it runs:
+
+| File | From |
+|---|---|
+| `app.js` and `chunk-*.js` | `demo/client`, bundled with esbuild. The avatar library is its own chunk, loaded when the agent chat is near the viewport. |
+| `fonts/Geist-Variable.woff2`, `fonts/GeistMono-Variable.woff2` | the `geist` package (SIL OFL 1.1), self-hosted so the page makes no third-party request |
+| `spicrawl.svg`, `og.png` | `videos/public/brand/wordmark.svg`, `launch/social-preview.png` |
+| `THIRD-PARTY.txt` | the licences of everything above that ships to the browser |
+
+The effects come from three libraries: `border-beam` (the install command), `thinking-orbs` (the "Checking..." line), `bot-avatars` (the agent chat), all React, plus [ascii.rest](https://ascii.rest) (MIT) for the pulse, the URL field's ghost and the decoding diff line. `demo/client/pieces/scramble.js` is a modified copy of its `scramble` piece, as ascii.rest allows. The React components render a `<style>` element, which the page's CSP only allows with the nonce, so `client/nonce.js` gives every `<style>` created at runtime the nonce from `<meta name="csp-nonce">`.
 
 ## Run it locally
 
@@ -20,11 +37,11 @@ printf 'SPICRAWL_API_KEY=spicrawl_live_...\n' > demo/.dev.vars   # git-ignored
 npm run demo:dev                                                # http://localhost:8787
 ```
 
-Local mode needs no Cloudflare login. KV, the rate limiter, the Cache API and the Analytics Engine binding are all simulated locally. Every check is a real scrape against your key.
+Local mode needs no Cloudflare login. KV, the rate limiter, the Cache API and the Analytics Engine binding are all simulated locally. Every check is a real scrape against your key. `demo:dev` builds `demo/public` first; after a change under `demo/client`, run `npm run demo:build` again. Wrangler reads the assets folder when it starts, so restart it after a new file appears there.
 
 ## Deploy
 
-1. `npm install` (wrangler is a dev dependency, pinned to an exact 4.x version; it needs Node 22 or later).
+1. `npm install` (wrangler and the page's build dependencies are dev dependencies, pinned to exact versions; wrangler needs Node 22 or later).
 2. Create the KV namespace and paste the printed `id` over `REPLACE_WITH_KV_ID` in `demo/wrangler.jsonc`:
 
    ```sh
@@ -39,7 +56,7 @@ Local mode needs no Cloudflare login. KV, the rate limiter, the Cache API and th
 
 4. Optional: for Cloudflare Web Analytics, add a site in the dashboard (dashboard > Web Analytics) and put its token in `vars.BEACON_TOKEN`. While it is empty the page has no beacon.
 5. Optional but recommended for a public demo: Cloudflare Turnstile (see [Turnstile](#turnstile)).
-6. Deploy:
+6. Deploy (this builds `demo/public` first):
 
    ```sh
    npm run demo:deploy
@@ -71,7 +88,8 @@ The demo spends the credits of a paid key for anyone on the internet, so every c
 - Per-check cost cap: the scrape is a plain fetch (no `mode: "auto"`) with `max_cost: 1`. Spicrawl checks that ceiling before it runs anything and refuses a dearer request at 0 credits, so a visitor cannot pick a challenge-protected site that escalates to a browser engine (up to 8 credits, with 25 credits reserved while it runs). Such a site, or one that refuses a plain fetch, gets the `Blocked/unavailable` answer that points at the CLI, which still escalates automatically.
 - Only a target status of exactly `200` is stored or diffed. Anything else (403, 503, and also 202, 203, 206, which Spicrawl may bill at 0) is `Blocked/unavailable`, and nothing is written to KV.
 - Errors: Spicrawl's own error text is never returned. A visitor sees a fixed sentence and, for Spicrawl errors, the error code, for example `Spicrawl could not accept that URL. Check that it is a public web page (ERR::SECURITY::SSRF_BLOCKED).`
-- Headers: every response has `X-Content-Type-Options: nosniff`. The page's CSP has no `unsafe-inline`: the inline script and style carry a per-response nonce (`crypto.randomUUID`), and the page is sent with `Cache-Control: no-cache` so a shared cache cannot replay it. It allows Google Fonts and `static.cloudflareinsights.com` (the Web Analytics beacon), plus `challenges.cloudflare.com` for scripts and frames only while Turnstile is on.
+- Headers: every response has `X-Content-Type-Options: nosniff`. The page's CSP has no `unsafe-inline`: the one inline style carries a per-response nonce (`crypto.randomUUID`), the script is the page's own `/app.js` (`script-src 'self'`), and the page is sent with `Cache-Control: no-cache` so a shared cache cannot replay it. It allows `static.cloudflareinsights.com` (the Web Analytics beacon) and `api.github.com` (the star count) and nothing else off the origin; fonts are `'self'`. Turnstile adds `challenges.cloudflare.com` for scripts and frames only while it is on.
+- No engine names: the answer to a check never carries which engine Spicrawl used, and the page never names one.
 
 ## Turnstile
 

@@ -13,7 +13,7 @@ import {
 } from "@spicrawl/sdk";
 import { openpanelCsp, openpanelTag } from "./openpanel.mjs";
 import { diffLines } from "../../monitor.mjs";
-import { PAGE, RUN_COMMANDS } from "./page.mjs";
+import { LLMS_TXT, NOT_FOUND, PAGE, RUN_COMMANDS } from "./page.mjs";
 
 const MIN_CREDITS = 100; // below this the demo stops scraping and points people at the CLI
 const PACE_SLACK = 0.05; // a day's spend may run this share of the monthly limit ahead of an even pace
@@ -32,11 +32,13 @@ const SECURITY = { "x-content-type-options": "nosniff", "referrer-policy": "stri
 const csp = (nonce, turnstile, op = { script: "", connect: "" }) =>
   [
     "default-src 'none'",
-    `script-src 'nonce-${nonce}' https://static.cloudflareinsights.com${turnstile ? " https://challenges.cloudflare.com" : ""}${op.script}`,
-    `style-src 'nonce-${nonce}' https://fonts.googleapis.com`,
-    "font-src https://fonts.gstatic.com",
-    "img-src data:",
-    `connect-src 'self' https://cloudflareinsights.com${op.connect}`,
+    // 'self' is the page's own bundle (/app.js and its chunks, served as static assets); inline code still needs the nonce.
+    `script-src 'nonce-${nonce}' 'self' https://static.cloudflareinsights.com${turnstile ? " https://challenges.cloudflare.com" : ""}${op.script}`,
+    `style-src 'nonce-${nonce}'`,
+    "font-src 'self'", // Geist and Geist Mono, served from /fonts
+    "img-src 'self' data:", // the wordmark, and the inline favicon
+    // api.github.com: the star count on the "Star on GitHub" buttons.
+    `connect-src 'self' https://cloudflareinsights.com https://api.github.com${op.connect}`,
     ...(turnstile ? ["frame-src https://challenges.cloudflare.com"] : []),
     "base-uri 'none'",
     "form-action 'none'",
@@ -199,7 +201,8 @@ async function check(request, env, ctx, ev) {
     cache: false, // a cached copy would hide changes
   });
   ev.credits = page._meta.creditsCharged ?? 0;
-  const base = { url, credits: ev.credits, engine: page._meta.engine, targetStatus: page.targetStatus };
+  // No engine field: which engine Spicrawl picked is internal and is never shown to visitors.
+  const base = { url, credits: ev.credits, targetStatus: page.targetStatus };
 
   // Only a 200 is a page worth keeping. Anything else (a block page, an outage, a 202/206 that Spicrawl may bill at 0)
   // leaves the last good snapshot alone.
@@ -247,6 +250,20 @@ function describe(err, apiKey) {
   return fail(500, "error", "Something went wrong on our side. Please try again.");
 }
 
+/** The designed 404: styled like the page, no script. */
+function notFound() {
+  const nonce = btoa(randomUUID());
+  return new Response(NOT_FOUND.replaceAll("__NONCE__", () => nonce), {
+    status: 404,
+    headers: {
+      ...SECURITY,
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-cache",
+      "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    },
+  });
+}
+
 function page(env) {
   const clean = (v) => String(v || "").replace(/[^\w-]/g, "");
   const token = clean(env.BEACON_TOKEN);
@@ -277,7 +294,13 @@ export default {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { ...SECURITY, allow: "GET, HEAD" } });
       return page(env);
     }
-    if (pathname !== "/api/check") return new Response("Not found", { status: 404, headers: SECURITY });
+    if (pathname === "/llms.txt") {
+      if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { ...SECURITY, allow: "GET, HEAD" } });
+      return new Response(LLMS_TXT, { headers: { ...SECURITY, "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
+    }
+    if (pathname !== "/api/check") {
+      return request.method === "GET" || request.method === "HEAD" ? notFound() : new Response("Not found", { status: 404, headers: SECURITY });
+    }
     if (request.method !== "POST") return json({ status: "error", message: "Use POST." }, 405, { allow: "POST" });
 
     const started = Date.now();
