@@ -9,7 +9,7 @@ export const REPO_URL = "https://github.com/OfficialSpicrawl/change-monitor";
 export const KEY_URL = "https://app.spicrawl.com";
 const DOCS_URL = "https://docs.spicrawl.com";
 const SITE_URL = "https://change-monitor.spicrawl.com";
-const SAMPLE_URL = "https://example.com";
+const SAMPLE_URL = "https://acme.dev/pricing";
 const DESCRIPTION =
   "Open-source CLI that watches web pages, prints a line diff when they change and alerts Discord or Slack. Runs from cron, GitHub Actions or a coding agent.";
 
@@ -59,14 +59,14 @@ const WORDMARK = `<img src="/spicrawl.svg" alt="Spicrawl" width="90" height="28"
 // What the sample run ends on, for people without JavaScript.
 const FINAL_FRAME = `<div class="ln sh"><span class="prompt">$ </span>node monitor.mjs ${SAMPLE_URL}</div>
 <div class="ln"><span class="strong">Changed: </span>${SAMPLE_URL} (+1 -2 lines)</div>
-<div class="ln box"><span class="edge">│ </span><span class="cell del"><span class="t">- An old line that was removed.</span></span></div>
-<div class="ln box"><span class="edge">▌ </span><span class="cell add">+ This domain is for use in documentation examples.</span></div>`;
+<div class="ln box"><span class="edge">│ </span><span class="cell del"><span class="t">- Free trial: 14 days.</span></span></div>
+<div class="ln box"><span class="edge">▌ </span><span class="cell add">+ Pro plan: $25 per month.</span></div>`;
 
 // The agent chat as the HTML holds it: the finished frame. The client replays it as a live terminal.
 const CHAT_FINAL = `<div class="ln sh"><span class="prompt">$ </span>node monitor.mjs</div>
-<div class="ln">Baseline saved: <span class="mut">https://example.com</span></div>
-<div class="ln">Baseline saved: <span class="mut">https://www.iana.org/help/example-domains</span></div>
-<div class="ln">Baseline saved: <span class="mut">https://en.wikipedia.org/wiki/Main_Page</span></div>
+<div class="ln">Baseline saved: <span class="mut">https://acme.dev/pricing</span></div>
+<div class="ln">Baseline saved: <span class="mut">https://acme.dev/docs</span></div>
+<div class="ln">Baseline saved: <span class="mut">https://status.acme.dev</span></div>
 <div class="ln mut">Credits used this run: 3</div>
 <div class="ln ok">\u2713 Baselines saved for 3 pages.</div>`;
 
@@ -149,14 +149,14 @@ code, pre { font-family: var(--mono); }
 @media (max-width: 479px) { .bar .star .long { display: none; } }
 
 /* Hero */
-.hero { padding-top: 64px; text-align: center; }
-@media (min-width: 640px) { .hero { padding-top: 104px; } }
-h1 { font-size: clamp(42px, 7.4vw, 80px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 600; }
+.hero { padding-top: 48px; text-align: center; }
+@media (min-width: 640px) { .hero { padding-top: 72px; } }
+h1 { font-size: clamp(40px, 6.4vw, 72px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 600; }
 h1 span { display: block; }
 .l1 { color: var(--mut); }
 .sub { margin: 24px auto 0; max-width: 40ch; font-size: 17px; color: var(--mut); text-wrap: balance; }
 @media (min-width: 760px) { .sub { max-width: none; font-size: 18px; } }
-.cta { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 12px 12px; margin-top: 40px; }
+.cta { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 12px 12px; margin-top: 32px; }
 .cta-cmd { display: grid; gap: 10px; justify-items: start; width: min(100%, 540px); text-align: left; }
 .cta-cmd > div:first-child { width: 100%; }
 .cta-go { display: grid; gap: 10px; justify-items: center; }
@@ -176,13 +176,13 @@ h1 span { display: block; }
 @media (hover: hover) { .tab:hover { color: var(--ink); background: var(--elev); } }
 
 /* Watch: the pulse, then the terminal. No card; the only box is the ASCII frame around a diff. */
-.watch { max-width: 704px; margin: 72px auto 0; padding: 0 var(--pad); }
-@media (min-width: 640px) { .watch { margin-top: 96px; } }
-.pulse { display: block; width: max-content; max-width: 100%; height: 114px; margin: 0 auto 32px; overflow: hidden; font: 400 11px/1.15 var(--art); color: var(--dim); white-space: pre; }
+.watch { max-width: 704px; margin: 48px auto 0; padding: 0 var(--pad); }
+@media (min-width: 640px) { .watch { margin-top: 56px; } }
+.pulse { display: block; width: max-content; max-width: 100%; height: 114px; margin: 0 auto 20px; overflow: hidden; font: 400 11px/1.15 var(--art); color: var(--dim); white-space: pre; }
 .wbar { display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font: 500 12px var(--mono); color: var(--mut); }
 .link { appearance: none; padding: 6px 0; border: 0; background: none; color: var(--ink); font: 500 12px var(--mono); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .link[hidden] { display: none; }
-.out { min-height: 248px; padding: 18px 0 14px; font: 400 14px/1.7 var(--mono); }
+.out { min-height: 236px; padding: 18px 0 14px; font: 400 14px/1.7 var(--mono); }
 .ln { white-space: pre-wrap; overflow-wrap: anywhere; }
 .ln.mut, .ln.note { color: var(--mut); }
 .ln.note { margin-top: 10px; font-size: 12px; }
@@ -221,6 +221,7 @@ h1 span { display: block; }
 .run { appearance: none; flex: none; min-height: 36px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--ink); font: 500 13px var(--mono); cursor: pointer; transition: background 0.25s var(--ease), color 0.25s var(--ease); }
 @media (hover: hover) { .run:hover:not(:disabled) { background: var(--ink); color: var(--bg); } }
 .run:focus-visible { background: var(--ink); color: var(--bg); }
+@media (max-width: 520px) { .prompt-line { flex-wrap: wrap; gap: 0 12px; } .ps1 { order: 1; } .run { order: 2; margin-left: auto; } .field { order: 3; flex-basis: 100%; } }
 .run:disabled { color: var(--mut); cursor: progress; }
 .cf-turnstile { margin-top: 8px; }
 .hint { padding-top: 6px; }
@@ -234,11 +235,12 @@ h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.03
 .msg-bot { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; align-items: start; }
 .bot { width: 44px; height: 44px; }
 .msg-bot .out { min-height: 156px; padding: 4px 0 0; }
+@media (max-width: 560px) { .you { grid-template-columns: 1fr; gap: 2px; } }
 @media (max-width: 639px) { .msg-bot { grid-template-columns: 1fr; gap: 12px; } .msg-bot .out { min-height: 236px; } }
 .ln.ok { margin-top: 6px; }
 
 /* 404 */
-.lost { display: grid; justify-items: center; gap: 32px; padding-top: 96px; padding-bottom: 96px; text-align: center; }
+.lost { display: grid; align-content: center; justify-items: center; gap: 32px; min-height: calc(100svh - 72px); padding-top: 32px; padding-bottom: 72px; text-align: center; }
 .lost .out { min-height: 0; padding: 0; text-align: left; }
 
 /* Finale and footer */
@@ -319,7 +321,7 @@ ${FONT_LINKS}
       <form class="prompt-line" id="form" novalidate title="Public pages only. Snapshots are shared by URL and kept 7 days.">
         <label class="sr-only" for="url">Page URL to check</label>
         <span class="ps1" aria-hidden="true"><b>$</b> node monitor.mjs</span>
-        <span class="field" id="field"><input id="url" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="2048" placeholder="https://example.com" aria-describedby="hint"><span class="ghost" id="ghost" aria-hidden="true" hidden></span></span>
+        <span class="field" id="field"><input id="url" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="2048" placeholder="https://acme.dev/pricing" aria-label="Page URL to check" aria-describedby="hint"><span class="ghost" id="ghost" aria-hidden="true" hidden></span></span>
         <button type="submit" class="run" id="go">Run &#8629;</button>
       </form>
       <!--TURNSTILE-->
@@ -367,8 +369,9 @@ ${FONT_LINKS}
 <style nonce="__NONCE__">${CSS}</style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="wrap bar"><a class="brand" href="/" aria-label="Spicrawl change-monitor, home">${WORDMARK}</a></header>
-<main class="wrap lost">
+<main id="main" class="wrap lost">
   <h1><span class="l2">Page not found.</span></h1>
   <div class="out"><div class="ln box"><span class="edge">│ </span><span class="cell del"><span class="t">- /this-page</span></span></div><div class="ln box"><span class="edge">▌ </span><span class="cell add">+ /</span></div></div>
   <p><a class="btn btn-solid" href="/">Back to change-monitor <span class="arrow" aria-hidden="true">&rarr;</span></a></p>

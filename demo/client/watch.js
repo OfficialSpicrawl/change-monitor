@@ -8,12 +8,12 @@ const out = $("out"), form = $("form"), input = $("url"), go = $("go"), live = $
 const mode = $("mode"), replay = $("replay"), ghost = $("ghost"), field = $("field");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 
-// A sample, not a recording: the README's output, shortened. (Its second run used a hand-edited snapshot.)
-const URL_ = "https://example.com";
+// A sample, not a recording: the CLI's real output format on an invented page.
+const URL_ = "https://acme.dev/pricing";
 const DIFF = [
-  { cls: "del", text: "- This domain is for use in docs (old wording)." },
-  { cls: "del", text: "- An old line that was removed." },
-  { cls: "add", text: "+ This domain is for use in documentation examples." },
+  { cls: "del", text: "- Pro plan: $20 per month." },
+  { cls: "del", text: "- Free trial: 14 days." },
+  { cls: "add", text: "+ Pro plan: $25 per month." },
 ];
 const LABEL = {
   baseline: "Baseline saved", unchanged: "Unchanged", changed: "Changed", blocked: "Blocked/unavailable",

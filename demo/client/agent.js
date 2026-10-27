@@ -1,4 +1,4 @@
-// The agent chat is a live terminal: the command types in, the real CLI output (the README's) prints, then a check mark.
+// The agent chat is a live terminal: the command types in, the CLI's output (its real format) prints, then a check mark.
 // The avatar is "working" while the command runs and idle otherwise. It plays when the chat scrolls into view, loops slowly
 // while it stays there, and pauses off screen. Under reduced motion (or without IntersectionObserver) the finished chat is
 // just shown, which is also what the HTML holds.
@@ -6,9 +6,9 @@ import { botState } from "./store.js";
 
 const COMMAND = "node monitor.mjs";
 const OUTPUT = [
-  ["Baseline saved: ", "https://example.com"],
-  ["Baseline saved: ", "https://www.iana.org/help/example-domains"],
-  ["Baseline saved: ", "https://en.wikipedia.org/wiki/Main_Page"],
+  ["Baseline saved: ", "https://acme.dev/pricing"],
+  ["Baseline saved: ", "https://acme.dev/docs"],
+  ["Baseline saved: ", "https://status.acme.dev"],
 ];
 const CREDITS = "Credits used this run: 3";
 const DONE = "\u2713 Baselines saved for 3 pages.";

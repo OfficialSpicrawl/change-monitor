@@ -73,14 +73,14 @@ header   [Spicrawl]                                                [GitHub icon 
                             (pulse, ASCII)
          Sample run                                                          Replay sample
          ------------------------------------------------------------------------------
-         $ node monitor.mjs https://example.com
-         Changed: https://example.com (+1 -2 lines)
-         ╭─ example.com ─────────────────────────────────────╮
-         │ - This domain is for use in docs (old wording).    │
-         ▌ + This domain is for use in documentation examples │
+         $ node monitor.mjs https://acme.dev/pricing
+         Changed: https://acme.dev/pricing (+1 -2 lines)
+         ╭─ acme.dev/pricing ─────────────────────────────────╮
+         │ - Pro plan: $20 per month.                          │
+         ▌ + Pro plan: $25 per month.                          │
          ╰────────────────────────────────────────────────────╯
          ------------------------------------------------------------------------------
-         $ node monitor.mjs  https://example.com▌                                Run
+         $ node monitor.mjs  https://acme.dev/pricing▌                           Run
 
                          Ask your agent.
               you   Watch these 3 pages. Ping Discord on change.
@@ -94,6 +94,6 @@ header   [Spicrawl]                                                [GitHub icon 
 ## Rules this page keeps
 
 - AA contrast, one h1, visible focus, skip link, reduced motion, 390 px layout, no dashes in copy, no filler words, no invented numbers (the star count is fetched; it is hidden when unavailable or 0).
-- Copy matches `README.md` and `SKILL.md`. The sample run is the README's output, shortened and labelled "Sample run" (the README's second run used a hand-edited snapshot).
+- Copy matches `README.md` and `SKILL.md`. The sample run and the agent chat use the CLI's real output format on an invented page (`acme.dev`), and the sample is labelled "Sample run".
 - Notes live in tooltips and result states, not in paragraphs: the privacy note is the form's tooltip and a line in every real result.
 - Never name Spicrawl's internal engines on the page or in the API response.

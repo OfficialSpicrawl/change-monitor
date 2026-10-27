@@ -23,7 +23,7 @@ export const pulseFrame = () => pulse.default()(0);
 
 // The ghost of the URL field: example pages typed and deleted behind a cursor, on one left-aligned line.
 const ghost = reshape(typewriter, (s) => s.split("\n")[1].trimStart(), { cols: 44, rows: 1 });
-const PHRASES = ["https://example.com", "https://acme.dev/pricing", "https://status.acme.dev", "https://acme.dev/docs"];
+const PHRASES = ["https://acme.dev/pricing", "https://status.acme.dev", "https://acme.dev/docs", "https://acme.dev/changelog"];
 export const mountGhost = (el) => mount(el, ghost, { prefix: "", phrases: PHRASES });
 
 // A line that decodes out of flickering glyphs into `to`, once, then holds still. Returns the stop function.
