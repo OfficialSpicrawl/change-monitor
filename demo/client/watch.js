@@ -198,8 +198,12 @@ async function playSample(fast) {
     if (!fast) {
       await command(URL_, id, false);
       await step(450);
+      out.append(ln("mut", "Checking 1 URL(s)"));
+      await step(300);
       out.append(ln("", "Baseline saved: ", [URL_, "mut"]));
-      await step(1300);
+      await step(260);
+      out.append(ln("mut", "Credits used this run: 1"));
+      await step(1100);
       out.replaceChildren(ln("later", "── 6 hours later ──"));
       await step(1400);
       clear();
@@ -211,9 +215,12 @@ async function playSample(fast) {
       await step(1500);
       dropChecking(busy);
     }
+    out.append(ln("mut", "Checking 1 URL(s)"));
+    await step(240);
     out.append(ln("", ["Changed: ", "strong"], `${URL_} (+1 -2 lines)`));
     await step(260);
     await showDiff(DIFF, id, fast, step);
+    out.append(ln("mut", "Credits used this run: 1"));
     redraw = () => playSample(true);
   } catch (e) {
     if (e === CANCEL) return;

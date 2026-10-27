@@ -58,9 +58,11 @@ const WORDMARK = `<img src="/spicrawl.svg" alt="Spicrawl" width="90" height="28"
 
 // What the sample run ends on, for people without JavaScript.
 const FINAL_FRAME = `<div class="ln sh"><span class="prompt">$ </span>node monitor.mjs ${SAMPLE_URL}</div>
+<div class="ln mut">Checking 1 URL(s)</div>
 <div class="ln"><span class="strong">Changed: </span>${SAMPLE_URL} (+1 -2 lines)</div>
 <div class="ln box"><span class="edge">│ </span><span class="cell del"><span class="t">- Free trial: 14 days.</span></span></div>
-<div class="ln box"><span class="edge">▌ </span><span class="cell add">+ Pro plan: $25 per month.</span></div>`;
+<div class="ln box"><span class="edge">▌ </span><span class="cell add">+ Pro plan: $25 per month.</span></div>
+<div class="ln mut">Credits used this run: 1</div>`;
 
 // The agent chat as the HTML holds it: the finished frame. The client replays it as a live terminal.
 const CHAT_FINAL = `<div class="ln sh"><span class="prompt">$ </span>node monitor.mjs</div>
@@ -141,8 +143,8 @@ code, pre { font-family: var(--mono); }
 
 /* Header */
 .bar { display: flex; align-items: center; justify-content: space-between; height: 72px; }
-.brand { display: block; line-height: 0; transition: opacity 0.25s var(--ease); }
-@media (hover: hover) { .brand:hover { opacity: 0.7; } }
+.brand { display: block; line-height: 0; transition: opacity 0.25s var(--ease), transform 0.25s var(--ease); }
+@media (hover: hover) { .brand:hover { opacity: 0.7; transform: translateX(3px); } }
 .brand img { display: block; }
 .star { height: 40px; padding: 0 14px; font-size: 14px; }
 .star .count { padding-left: 10px; margin-left: 2px; border-left: 1px solid color-mix(in srgb, currentColor 35%, transparent); font: 500 13px var(--mono); }
@@ -173,7 +175,7 @@ h1 span { display: block; }
 .tabs { display: flex; gap: 4px; margin-left: -8px; }
 .tab { appearance: none; min-height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--mut); font: 500 12px var(--mono); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 6px; transition: text-decoration-color 0.2s var(--ease), color 0.2s var(--ease); }
 .tab[aria-pressed="true"], .tab.is-on { color: var(--ink); text-decoration-color: var(--ink); }
-@media (hover: hover) { .tab:hover { color: var(--ink); background: var(--elev); } }
+@media (hover: hover) { .tab:hover { color: var(--ink); background: var(--elev); text-decoration-color: var(--mut); } .tab[aria-pressed="true"]:hover, .tab.is-on:hover { text-decoration-color: var(--ink); } }
 
 /* Watch: the pulse, then the terminal. No card; the only box is the ASCII frame around a diff. */
 .watch { max-width: 704px; margin: 48px auto 0; padding: 0 var(--pad); }
@@ -211,7 +213,7 @@ h1 span { display: block; }
 .prompt-line { display: flex; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); font: 500 14px var(--mono); }
 .ps1 { flex: none; color: var(--ink); white-space: pre; }
 .ps1 b { color: var(--ink); font-weight: 700; }
-.field { position: relative; flex: 1; min-width: 0; }
+.field { position: relative; flex: 1; min-width: 0; box-shadow: 0 1px 0 #4A4E54; }
 .field input { display: block; width: 100%; height: 40px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--ink); font: 400 14px var(--mono); }
 .field input::placeholder { color: #8A9096; opacity: 1; }
 .field input:focus-visible { outline: none; box-shadow: 0 2px 0 var(--ink); }
@@ -241,7 +243,7 @@ h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.03
 
 /* 404 */
 .lost { display: grid; align-content: center; justify-items: center; gap: 32px; min-height: calc(100svh - 72px); padding-top: 32px; padding-bottom: 72px; text-align: center; }
-.lost .out { min-height: 0; padding: 0; text-align: left; }
+.lost .out { min-height: 0; padding: 0; font-size: 20px; text-align: left; }
 
 /* Finale and footer */
 .finale { padding-top: 112px; text-align: center; }
@@ -348,7 +350,7 @@ ${FONT_LINKS}
 </main>
 
 <footer class="wrap foot"><div class="foot-in">
-  <nav aria-label="Footer"><a href="${DOCS_URL}" rel="noopener">Docs</a><a href="${REPO_URL}" rel="noopener">Source</a><a href="/llms.txt">llms.txt</a></nav>
+  <nav aria-label="Footer"><a href="${DOCS_URL}" rel="noopener">Docs</a><a href="${REPO_URL}" rel="noopener">Source</a><a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a></nav>
   <p>Apache-2.0. ASCII art by <a href="https://ascii.rest" rel="noopener">ascii.rest</a>.</p>
 </div></footer>
 </body>
@@ -361,7 +363,7 @@ export const NOT_FOUND = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page not found | change-monitor</title>
+<title>Page not found | Spicrawl change-monitor</title>
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#16181B">
