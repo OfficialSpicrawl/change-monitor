@@ -1,5 +1,5 @@
 // Builds what the demo page needs next to the Worker, into demo/public (served as static assets, see "assets" in
-// demo/wrangler.jsonc): the bundled client code (demo/client), the Geist fonts, the wordmark, the favicon, the social
+// demo/wrangler.jsonc): the bundled client code (demo/client), the Geist and Righteous fonts, the wordmark, the favicon, the social
 // preview image and the third-party licences. All of it is git-ignored except robots.txt and sitemap.xml, which are committed.
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
@@ -33,6 +33,8 @@ await build({
 const fonts = path("node_modules/geist/dist/fonts/");
 copyFileSync(`${fonts}geist-sans/Geist-Variable.woff2`, pub("fonts/Geist-Variable.woff2"));
 copyFileSync(`${fonts}geist-mono/GeistMono-Variable.woff2`, pub("fonts/GeistMono-Variable.woff2"));
+// Righteous (SIL OFL 1.1), the home page's H1 only: the Latin subset, weight 400, from the @fontsource package.
+copyFileSync(path("node_modules/@fontsource/righteous/files/righteous-latin-400-normal.woff2"), pub("fonts/Righteous-Latin.woff2"));
 copyFileSync(path("videos/public/brand/wordmark.svg"), pub("spicrawl.svg"));
 // The favicon: the spider mark, white on the page's ground colour, so it shows on a light or a dark tab bar.
 const mark = readFileSync(path("videos/public/brand/mark.svg"), "utf8");
@@ -41,7 +43,7 @@ writeFileSync(pub("favicon.svg"), `<svg xmlns="http://www.w3.org/2000/svg" viewB
 copyFileSync(path("launch/social-preview.png"), pub("og.png"));
 
 // The licences of what ships to the browser, in one file.
-const LICENSED = ["react", "react-dom", "scheduler", "bot-avatars", "thinking-orbs", "ascii.rest", "geist"];
+const LICENSED = ["react", "react-dom", "scheduler", "bot-avatars", "thinking-orbs", "ascii.rest", "geist", "@fontsource/righteous"];
 const licences = LICENSED.map((name) => {
   const dir = path(`node_modules/${name}/`);
   const file = readdirSync(dir).find((f) => /^licen[sc]e(\.txt|\.md)?$/i.test(f));

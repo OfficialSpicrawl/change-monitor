@@ -90,15 +90,21 @@ const PULSE = pulseFrame();
 
 const FONT_LINKS = `<link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin>`;
+// Righteous is only the home page's H1 (the 404 page keeps Geist), so only the home page preloads it.
+const DISPLAY_FONT_LINK = `<link rel="preload" href="/fonts/Righteous-Latin.woff2" as="font" type="font/woff2" crossorigin>`;
 
 const CSS = `
 @font-face { font-family: "Geist"; src: url(/fonts/Geist-Variable.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url(/fonts/GeistMono-Variable.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Righteous"; src: url(/fonts/Righteous-Latin.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+/* Arial scaled to Righteous' width and vertical metrics, so the swap to Righteous does not move the H1 (size-adjust = the headline's width in Righteous / in Arial). */
+@font-face { font-family: "Righteous Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans"); size-adjust: 104.1%; ascent-override: 94.6%; descent-override: 24.7%; line-gap-override: 0%; }
 :root {
   --bg: #16181B; --card: #1E2124; --elev: #26292D; --line: #2E3135;
   --ink: #F9F9F9; --mut: #A9ADB2; --dim: #9A9FA5;
   --r: 10px; --ease: cubic-bezier(0.22, 1, 0.36, 1); --pad: 20px;
   --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Righteous", "Righteous Fallback", var(--sans);
   --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --art: ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, "Geist Mono", monospace; /* box-drawing glyphs, for the ascii pieces */
 }
@@ -154,6 +160,7 @@ code, pre { font-family: var(--mono); }
 .hero { padding-top: 48px; text-align: center; }
 @media (min-width: 640px) { .hero { padding-top: 72px; } }
 h1 { font-size: clamp(40px, 6.4vw, 72px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 600; }
+.hero h1 { font-family: var(--display); font-weight: 400; line-height: 1.06; letter-spacing: -0.01em; } /* Righteous has one weight (400) and sets wider than Geist, so less tracking */
 h1 span { display: block; }
 .l1 { color: var(--mut); }
 .sub { margin: 24px auto 0; max-width: 40ch; font-size: 17px; color: var(--mut); text-wrap: balance; }
@@ -288,6 +295,7 @@ export const PAGE = `<!doctype html>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 ${FONT_LINKS}
+${DISPLAY_FONT_LINK}
 <style nonce="__NONCE__">${CSS}</style>
 <script type="application/ld+json">${JSON_LD}</script>
 <!--BEACON-->

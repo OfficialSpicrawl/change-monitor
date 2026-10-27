@@ -200,6 +200,17 @@ test("the star count is asked of GitHub once an hour, written into the page, and
   }
 });
 
+test("the hero H1 alone is Righteous: self-hosted, preloaded, swap with a size-adjusted fallback, weight 400", async () => {
+  const html = async (path) => (await worker.fetch(new Request(`https://change-monitor.spicrawl.com${path}`), makeEnv(), ctx())).text();
+  const home = await html("/");
+  assert.match(home, /<link rel="preload" href="\/fonts\/Righteous-Latin\.woff2" as="font" type="font\/woff2" crossorigin>/);
+  assert.match(home, /@font-face \{ font-family: "Righteous"; src: url\(\/fonts\/Righteous-Latin\.woff2\) format\("woff2"\); font-weight: 400; font-display: swap; \}/);
+  assert.match(home, /@font-face \{ font-family: "Righteous Fallback"; src: local\("Arial"\)[^}]*size-adjust: [\d.]+%/);
+  assert.match(home, /\.hero h1 \{ font-family: var\(--display\); font-weight: 400;/, "one weight, so no synthetic bold");
+  assert.doesNotMatch(home, /googleapis|gstatic/);
+  assert.doesNotMatch(await html("/nope"), /rel="preload" href="\/fonts\/Righteous/, "the 404 page keeps Geist and does not fetch Righteous");
+});
+
 test("routing: unknown path 404, wrong method 405", async () => {
   const run = (path, method) => worker.fetch(new Request(`https://x.test${path}`, { method }), makeEnv(), ctx());
   const lost = await run("/nope", "GET");

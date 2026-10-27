@@ -39,7 +39,7 @@ const csp = (nonce, turnstile, op = { script: "", connect: "" }) =>
     // 'self' is the page's own bundle (/app.js and its chunks, served as static assets); inline code still needs the nonce.
     `script-src 'nonce-${nonce}' 'self' https://static.cloudflareinsights.com${turnstile ? " https://challenges.cloudflare.com" : ""}${op.script}`,
     `style-src 'nonce-${nonce}'`,
-    "font-src 'self'", // Geist and Geist Mono, served from /fonts
+    "font-src 'self'", // Geist, Geist Mono and Righteous, served from /fonts
     "img-src 'self' data:", // the wordmark, and the inline favicon
     `connect-src 'self' https://cloudflareinsights.com${op.connect}`,
     ...(turnstile ? ["frame-src https://challenges.cloudflare.com"] : []),
