@@ -7,7 +7,7 @@ Short notes so later edits stay consistent. Not an operator doc: how to run and 
 - Subject: change-monitor, an open-source CLI that watches web pages, prints a line diff and alerts Discord or Slack. Runs from cron, GitHub Actions or as a Claude Code / Codex agent skill.
 - Audience: developers and people who run coding agents. Job of the page: get them to install the skill, and to open a free Spicrawl key.
 - Constraints: the page is a Cloudflare Worker serving one HTML string; strict CSP (nonce, no `unsafe-inline`, no third-party hosts except the GitHub API); the Spicrawl brand is monochrome (`videos/BRAND.md`); no engine names anywhere; copy must match the README.
-- Direction from the owner: clean and centered, one command as the star, lots of whitespace, mostly visual, very little text (about 90 words of prose), ascii.rest for the illustration, Geist and Geist Mono. When in doubt, remove it.
+- Direction from the owner: clean and centered, one command as the star, lots of whitespace, mostly visual, very little text (about 90 words of prose), a headline anyone understands at first read, ascii.rest for the illustration, Geist and Geist Mono. When in doubt, remove it.
 - Scope decision: a product page earns its craft in type, layout and a few precise motions. No loader, no WebGL, no smooth-scroll library.
 
 ## Concept card
@@ -19,7 +19,7 @@ Signature:   The watch block under the hero: a pulse that says "watching", then 
              jumps "6 hours later" and lands the diff. The visitor types their own URL at the same prompt.
 Emotion:     Calm and exact. A tool that tells you only what changed.
 Motion verb: "resolve": an old line gives way to a new one (dim, strike, decode). Nothing bounces or glows.
-Screenshot:  The hero: "Watch any page. / Get the diff." over the install command, the pulse and the framed diff.
+Screenshot:  The hero: "Get alerted when a page changes." over the install command, the pulse and the framed diff.
 ```
 
 Anchor (the fact the concept depends on): `monitor.mjs` prints a set-difference line diff with `-` and `+` lines, 20 lines at most.
@@ -43,15 +43,16 @@ Three concepts were considered: (1) the page is a diff (chosen: it is the tool's
 - Layout: one centered column. Hero text is centered; the terminal block is 704 px wide and its text is left aligned. Sections are separated by whitespace, not rules or cards. The only boxes: the install command, and the ASCII frame around a diff.
 - Shape: one radius, 10 px. One hairline above the terminal and above the prompt. No glow, no gradient, no shadow.
 - Motion: ease `cubic-bezier(0.22, 1, 0.36, 1)`, 200 to 600 ms. Buttons wipe their fill in from the left and nudge the arrow. Under reduced motion every state change stays (colour, fill) and the movement goes; the sample run renders its final frame, the pulse and the URL ghost hold their first frame, the beam and the orb stop.
-- Idle: the install box breathes (border beam), the pulse runs, the URL field types example pages, the agent avatar glances around. Everything else is still.
+- Alive: the install box breathes (border beam, desktop only: on a phone it was the one effect that cost real frame time), the pulse runs, the URL field types example pages. The sample run and the agent chat are live terminals that replay slowly while they are on screen and pause off screen; the sample stops replaying once the visitor types. Everything else is still.
+- No hero background: a decorative texture has no job here. The pulse and the sample already tell the story, and any background would cost frames on a phone.
 
 ## Effects
 
 | Where | Library | State |
 |---|---|---|
-| Install command (hero) | `border-beam`, `pulse-inner`, `mono` | always on; the library pauses it off screen and under reduced motion |
+| Install command (hero) | `border-beam`, `pulse-inner`, `mono` | desktop only; the library pauses it off screen and under reduced motion |
 | "Checking..." line in the terminal | `thinking-orbs`, `searching`, size 20 | while a check is in flight (a live check, and the "checking" beat of the sample) |
-| Agent chat | `bot-avatars`, `droid` | `working` while the chat runs the command, `default` (idle) otherwise |
+| Agent chat | `bot-avatars`, `droid` | `working` while the chat types and runs the command, `default` (idle) otherwise |
 | Pulse above the terminal | ascii.rest `heartbeat`, cropped to the trace and its dotted grid | always running; its first frame is in the HTML |
 | URL field before you type | ascii.rest `typewriter`, one left-aligned line | after the sample ends; stops on focus |
 | The added line of the sample diff | ascii.rest `scramble`, copied to `client/pieces` (any width, one line, faster) | once, as the diff lands |
@@ -63,9 +64,9 @@ No metal text on the H1: the H1 is the LCP element and must be plain text. The b
 ```
 header   [Spicrawl]                                                [GitHub icon Star on GitHub 12]
 
-                         Watch any page.
-                         Get the diff.
-              Alerts Discord or Slack. Runs on cron, GitHub Actions or your agent.
+                         Get alerted
+                         when a page changes.
+              See exactly what changed, in Discord, Slack or your agent.
          [ $ npx skills add OfficialSpicrawl/change-monitor  copy ]   [Try Spicrawl free ->]
            Agent skill  CLI                                          Free key, 1,000 credits a month.
 
@@ -83,7 +84,7 @@ header   [Spicrawl]                                                [GitHub icon 
 
                          Ask your agent.
               you   Watch these 3 pages. Ping Discord on change.
-              [bot] $ node monitor.mjs  /  Baselines saved for 3 pages.
+              [bot] $ node monitor.mjs, its output, then a check mark
 
                          Start free.
                 [Try Spicrawl free ->]  [GitHub icon Star on GitHub 12]
