@@ -1,6 +1,6 @@
 # Live demo (Cloudflare Worker)
 
-A one-page demo of the change monitor, served at https://change-monitor.spicrawl.com. A visitor types a URL at the terminal prompt and presses **Run**. The Worker scrapes it with Spicrawl (the CLI's call, minus `mode: "auto"`: one plain fetch capped at 1 credit), keeps a snapshot in Workers KV, and answers `Baseline saved`, `Unchanged` or `Changed` with the line diff, plus the credits used. The page also plays a scripted sample run, shows the install command and the "Try Spicrawl free" link, and has a "Star on GitHub" button whose count is fetched from the GitHub API in the browser.
+A one-page demo of the change monitor, served at https://change-monitor.spicrawl.com. A visitor types a URL at the terminal prompt and presses **Run**. The Worker scrapes it with Spicrawl (the CLI's call, minus `mode: "auto"`: one plain fetch capped at 1 credit), keeps a snapshot in Workers KV, and answers `Baseline saved`, `Unchanged` or `Changed` with the line diff, plus the credits used. The page also plays a scripted sample run, shows the install command and the "Try Spicrawl free" link, and has a "Star on GitHub" button. The Worker asks the GitHub API for the star count (one call an hour, kept with the Cache API under a synthetic key) and writes it into the page; it is left out when it is 0 or the call fails.
 
 ```text
 demo/
@@ -27,7 +27,7 @@ scripts/demo-build.mjs   builds demo/public
 | `spicrawl.svg`, `og.png` | `videos/public/brand/wordmark.svg`, `launch/social-preview.png` |
 | `THIRD-PARTY.txt` | the licences of everything above that ships to the browser |
 
-The effects come from three libraries: `border-beam` (the install command), `thinking-orbs` (the "Checking..." line), `bot-avatars` (the agent chat), all React, plus [ascii.rest](https://ascii.rest) (MIT) for the pulse, the URL field's ghost and the decoding diff line. `demo/client/pieces/scramble.js` is a modified copy of its `scramble` piece, as ascii.rest allows. The React components render a `<style>` element, which the page's CSP only allows with the nonce, so `client/nonce.js` gives every `<style>` created at runtime the nonce from `<meta name="csp-nonce">`.
+The effects come from two libraries.dev packages, `thinking-orbs` (the "Checking..." line) and `bot-avatars` (the agent chat), both React, plus [ascii.rest](https://ascii.rest) (MIT) for the pulse, the URL field's ghost and the decoding diff line. `demo/client/pieces/scramble.js` is a modified copy of its `scramble` piece, as ascii.rest allows. `border-beam` was tried on the install command and removed: it was barely visible and cost frames.
 
 ## Run it locally
 
@@ -88,7 +88,7 @@ The demo spends the credits of a paid key for anyone on the internet, so every c
 - Per-check cost cap: the scrape is a plain fetch (no `mode: "auto"`) with `max_cost: 1`. Spicrawl checks that ceiling before it runs anything and refuses a dearer request at 0 credits, so a visitor cannot pick a challenge-protected site that escalates to a browser engine (up to 8 credits, with 25 credits reserved while it runs). Such a site, or one that refuses a plain fetch, gets the `Blocked/unavailable` answer that points at the CLI, which still escalates automatically.
 - Only a target status of exactly `200` is stored or diffed. Anything else (403, 503, and also 202, 203, 206, which Spicrawl may bill at 0) is `Blocked/unavailable`, and nothing is written to KV.
 - Errors: Spicrawl's own error text is never returned. A visitor sees a fixed sentence and, for Spicrawl errors, the error code, for example `Spicrawl could not accept that URL. Check that it is a public web page (ERR::SECURITY::SSRF_BLOCKED).`
-- Headers: every response has `X-Content-Type-Options: nosniff`. The page's CSP has no `unsafe-inline`: the one inline style carries a per-response nonce (`crypto.randomUUID`), the script is the page's own `/app.js` (`script-src 'self'`), and the page is sent with `Cache-Control: no-cache` so a shared cache cannot replay it. It allows `static.cloudflareinsights.com` (the Web Analytics beacon) and `api.github.com` (the star count) and nothing else off the origin; fonts are `'self'`. Turnstile adds `challenges.cloudflare.com` for scripts and frames only while it is on.
+- Headers: every response has `X-Content-Type-Options: nosniff`. The page's CSP has no `unsafe-inline`: the one inline style carries a per-response nonce (`crypto.randomUUID`), the script is the page's own `/app.js` (`script-src 'self'`), and the page is sent with `Cache-Control: no-cache` so a shared cache cannot replay it. It allows `static.cloudflareinsights.com` (the Web Analytics beacon) and nothing else off the origin; fonts are `'self'`. Turnstile adds `challenges.cloudflare.com` for scripts and frames only while it is on.
 - No engine names: the answer to a check never carries which engine Spicrawl used, and the page never names one.
 
 ## Turnstile

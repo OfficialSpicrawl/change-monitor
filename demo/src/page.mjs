@@ -47,9 +47,9 @@ export const LLMS_TXT = `# change-monitor
 
 const GITHUB_MARK = `<svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>`;
 
-// "Star on GitHub" with the live count. The count is filled in by the client (stars.js) and stays hidden when unknown or 0.
+// "Star on GitHub". The Worker writes the count in (it asks GitHub once an hour) and leaves it out when it is 0 or unknown.
 const starButton = (cls = "") =>
-  `<a class="btn btn-line star ${cls}" data-star href="${REPO_URL}" rel="noopener" aria-label="Star on GitHub">${GITHUB_MARK}<span class="star-label">Star<span class="long"> on GitHub</span></span><span class="count" data-count hidden></span></a>`;
+  `<a class="btn btn-line star ${cls}" href="${REPO_URL}" rel="noopener" aria-label="__STAR_LABEL__">${GITHUB_MARK}<span class="star-label">Star<span class="long"> on GitHub</span></span><!--STAR_COUNT--></a>`;
 
 const tryButton = () =>
   `<a class="btn btn-solid" href="${KEY_URL}" rel="noopener">Try Spicrawl free <span class="arrow" aria-hidden="true">&rarr;</span></a>`;
@@ -111,8 +111,8 @@ a { color: inherit; text-underline-offset: 3px; }
 h1, h2, p { margin: 0; }
 code, pre { font-family: var(--mono); }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.skip { position: absolute; left: var(--pad); top: -64px; z-index: 10; padding: 10px 14px; border-radius: var(--r); background: var(--ink); color: var(--bg); font-weight: 600; text-decoration: none; }
-.skip:focus { top: 12px; }
+.skip { position: absolute; left: var(--pad); top: -80px; z-index: 10; padding: 10px 14px; border-radius: var(--r); background: var(--ink); color: var(--bg); font-weight: 600; text-decoration: none; }
+.skip:focus { top: 76px; }
 .wrap { max-width: calc(1080px + 2 * var(--pad)); margin: 0 auto; padding-left: var(--pad); padding-right: var(--pad); }
 .fine { font: 400 13px/1.5 var(--mono); color: var(--mut); }
 .mut { color: var(--mut); }
@@ -164,18 +164,21 @@ h1 span { display: block; }
 .cta-go { display: grid; gap: 10px; justify-items: center; }
 @media (max-width: 639px) { .cta-go { width: 100%; } .cta-go .btn { width: 100%; } }
 
-/* The install command: the one box on the page that moves (border-beam wraps it once the script has run) */
+/* The install command: the one box on the page */
 .cmd { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 8px 8px 8px 16px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); }
+.cmd-text { display: grid; gap: 2px; min-width: 0; }
 .cmd code { font: 500 14px/1.45 var(--mono); overflow-wrap: anywhere; }
+.next { color: var(--mut); font: 400 12px/1.45 var(--mono); }
 .prompt { color: var(--mut); }
 .copy { appearance: none; flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--mut); cursor: pointer; transition: color 0.2s var(--ease), background 0.2s var(--ease); }
 @media (hover: hover) { .copy:hover { background: var(--ink); color: var(--bg); } }
 .copy:focus-visible { background: var(--ink); color: var(--bg); }
 .copy-slot { flex: none; width: 32px; height: 32px; }
 .tabs { display: flex; gap: 4px; margin-left: -8px; }
-.tab { appearance: none; min-height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--mut); font: 500 12px var(--mono); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 6px; transition: text-decoration-color 0.2s var(--ease), color 0.2s var(--ease); }
+.tab { appearance: none; min-height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: linear-gradient(var(--elev), var(--elev)) left / 0 100% no-repeat; color: var(--mut); font: 500 12px var(--mono); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 6px; transition: background-size 0.35s var(--ease), color 0.2s var(--ease), text-decoration-color 0.2s var(--ease); }
 .tab[aria-pressed="true"], .tab.is-on { color: var(--ink); text-decoration-color: var(--ink); }
-@media (hover: hover) { .tab:hover { color: var(--ink); background: var(--elev); text-decoration-color: var(--mut); } .tab[aria-pressed="true"]:hover, .tab.is-on:hover { text-decoration-color: var(--ink); } }
+@media (hover: hover) { .tab:hover { color: var(--ink); background-size: 100% 100%; } }
+.tab:focus-visible { background-size: 100% 100%; }
 
 /* Watch: the pulse, then the terminal. No card; the only box is the ASCII frame around a diff. */
 .watch { max-width: 704px; margin: 48px auto 0; padding: 0 var(--pad); }
@@ -184,7 +187,8 @@ h1 span { display: block; }
 .wbar { display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font: 500 12px var(--mono); color: var(--mut); }
 .link { appearance: none; padding: 6px 0; border: 0; background: none; color: var(--ink); font: 500 12px var(--mono); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .link[hidden] { display: none; }
-.out { min-height: 236px; padding: 18px 0 14px; font: 400 14px/1.7 var(--mono); }
+.out { min-height: 218px; padding: 18px 0 14px; font: 400 14px/1.7 var(--mono); }
+@media (max-width: 639px) { .watch .out { min-height: 246px; } }
 .ln { white-space: pre-wrap; overflow-wrap: anywhere; }
 .ln.mut, .ln.note { color: var(--mut); }
 .ln.note { margin-top: 10px; font-size: 12px; }
@@ -223,7 +227,7 @@ h1 span { display: block; }
 .run { appearance: none; flex: none; min-height: 36px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--ink); font: 500 13px var(--mono); cursor: pointer; transition: background 0.25s var(--ease), color 0.25s var(--ease); }
 @media (hover: hover) { .run:hover:not(:disabled) { background: var(--ink); color: var(--bg); } }
 .run:focus-visible { background: var(--ink); color: var(--bg); }
-@media (max-width: 520px) { .prompt-line { flex-wrap: wrap; gap: 0 12px; } .ps1 { order: 1; } .run { order: 2; margin-left: auto; } .field { order: 3; flex-basis: 100%; } }
+@media (max-width: 639px) { .prompt-line { flex-wrap: wrap; gap: 0 12px; } .ps1 { order: 1; } .run { order: 2; margin-left: auto; } .field { order: 3; flex-basis: 100%; } }
 .run:disabled { color: var(--mut); cursor: progress; }
 .cf-turnstile { margin-top: 8px; }
 .hint { padding-top: 6px; }
@@ -231,14 +235,15 @@ h1 span { display: block; }
 /* Agent */
 .agent { max-width: 624px; margin: 0 auto; padding: 112px var(--pad) 0; }
 h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 600; text-align: center; }
-.chat { display: grid; gap: 22px; margin-top: 40px; }
+.sample { margin-top: 20px; text-align: center; }
+.chat { display: grid; gap: 22px; margin-top: 20px; }
 .you { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; align-items: baseline; font-size: 17px; }
 .who { color: var(--mut); font: 500 12px var(--mono); }
 .msg-bot { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; align-items: start; }
 .bot { width: 44px; height: 44px; }
 .msg-bot .out { min-height: 156px; padding: 4px 0 0; }
 @media (max-width: 560px) { .you { grid-template-columns: 1fr; gap: 2px; } }
-@media (max-width: 639px) { .msg-bot { grid-template-columns: 1fr; gap: 12px; } .msg-bot .out { min-height: 236px; } }
+@media (max-width: 639px) { .msg-bot { grid-template-columns: 1fr; gap: 12px; } }
 .ln.ok { margin-top: 6px; }
 
 /* 404 */
@@ -269,7 +274,6 @@ export const PAGE = `<!doctype html>
 <meta name="description" content="${DESCRIPTION}">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#16181B">
-<meta name="csp-nonce" content="__NONCE__">
 <link rel="canonical" href="${SITE_URL}/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Spicrawl">
@@ -281,7 +285,7 @@ export const PAGE = `<!doctype html>
 <meta property="og:image:height" content="640">
 <meta property="og:image:alt" content="A terminal showing node monitor.mjs printing a changed page with a removed and an added line.">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316181B'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='%23F9F9F9' font-family='sans-serif' font-weight='700'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 ${FONT_LINKS}
 <style nonce="__NONCE__">${CSS}</style>
@@ -299,11 +303,11 @@ ${FONT_LINKS}
 <main id="main">
   <section class="wrap hero" aria-labelledby="top-h">
     <h1 id="top-h"><span class="l1">Get alerted</span> <span class="l2">when a page changes.</span></h1>
-    <p class="sub">See exactly what changed, in Discord, Slack or your agent.</p>
+    <p class="sub">See what changed, in Discord, Slack or your agent.</p>
     <div class="cta">
       <div class="cta-cmd">
         <div id="install">
-          <div class="cmd"><code><span class="prompt" aria-hidden="true">$ </span>npx skills add OfficialSpicrawl/change-monitor</code><span class="copy-slot"></span></div>
+          <div class="cmd"><div class="cmd-text"><code><span class="prompt" aria-hidden="true">$ </span>npx skills add OfficialSpicrawl/change-monitor</code><span class="next"># then: npm install, export SPICRAWL_API_KEY</span></div><span class="copy-slot"></span></div>
           <div class="tabs"><span class="tab is-on">Agent skill</span></div>
           <noscript><p class="fine">CLI: git clone ${REPO_URL} &amp;&amp; cd change-monitor &amp;&amp; npm install</p></noscript>
         </div>
@@ -334,6 +338,7 @@ ${FONT_LINKS}
 
   <section class="agent" aria-labelledby="agent-h">
     <h2 id="agent-h">Ask your agent.</h2>
+    <p class="fine sample">Sample</p>
     <div class="chat" id="chat" role="group" aria-label="Example conversation">
       <p class="you"><span class="who">you</span><span>Watch these 3 pages. Ping Discord on change.</span></p>
       <div class="msg-bot">

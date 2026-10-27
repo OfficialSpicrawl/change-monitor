@@ -21,6 +21,10 @@ const MAX_COST = 1; // credits one check may cost; Spicrawl refuses anything dea
 const MAX_BODY = 4096;
 const SUMMARY_KEY = "https://cache.internal/usage-summary"; // synthetic: only ever a Cache API key, never fetched
 const SUMMARY_TTL = 60;
+const STARS_KEY = "https://cache.internal/github-stars"; // synthetic: only ever a Cache API key, never fetched
+const STARS_TTL = 3600;
+const STARS_RETRY = 300; // after a failure, ask GitHub again in five minutes
+const STARS_API = "https://api.github.com/repos/OfficialSpicrawl/change-monitor";
 const SNAPSHOT_TTL = 7 * 24 * 3600;
 const TURNSTILE_API = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 // ponytail: only the first 200 KB of a page is stored and compared, so a change past it is invisible.
@@ -37,8 +41,7 @@ const csp = (nonce, turnstile, op = { script: "", connect: "" }) =>
     `style-src 'nonce-${nonce}'`,
     "font-src 'self'", // Geist and Geist Mono, served from /fonts
     "img-src 'self' data:", // the wordmark, and the inline favicon
-    // api.github.com: the star count on the "Star on GitHub" buttons.
-    `connect-src 'self' https://cloudflareinsights.com https://api.github.com${op.connect}`,
+    `connect-src 'self' https://cloudflareinsights.com${op.connect}`,
     ...(turnstile ? ["frame-src https://challenges.cloudflare.com"] : []),
     "base-uri 'none'",
     "form-action 'none'",
@@ -54,7 +57,7 @@ const json = (body, status = 200, headers = {}) =>
 // A failed check: `http` is the response status, `status` the outcome shown in the UI and logged.
 const fail = (http, status, message, extra = {}, headers = {}) => ({ http, body: { status, message, ...extra }, headers });
 const noCredits = () =>
-  fail(503, "no_credits", "The demo has used its credits for this month — run it yourself with a free key", {
+  fail(503, "no_credits", "The demo has used its credits for this month. Run it yourself with a free key.", {
     commands: RUN_COMMANDS,
   });
 const paced = () =>
@@ -264,7 +267,33 @@ function notFound() {
   });
 }
 
-function page(env) {
+/** The repo's star count for the "Star on GitHub" buttons, or null. One GitHub call an hour, kept with the Cache API. */
+async function starCount(ctx) {
+  try {
+    const hit = await caches.default.match(STARS_KEY);
+    if (hit) return (await hit.json()).stars;
+    let stars = null;
+    try {
+      const res = await fetch(STARS_API, {
+        headers: { accept: "application/vnd.github+json", "user-agent": "spicrawl-change-monitor-demo" },
+        signal: AbortSignal.timeout(2000),
+      });
+      const n = res.ok ? (await res.json()).stargazers_count : null;
+      if (Number.isInteger(n) && n >= 0) stars = n;
+    } catch {}
+    const ttl = stars === null ? STARS_RETRY : STARS_TTL;
+    ctx.waitUntil(caches.default.put(STARS_KEY, new Response(JSON.stringify({ stars }), { headers: { "cache-control": `max-age=${ttl}` } })).catch(() => {}));
+    return stars;
+  } catch {
+    return null;
+  }
+}
+
+/** The count as it is written on a button: 12, 1.2k. Nothing for 0 or unknown, so there is never a lonely "0". */
+const shortCount = (n) => (!(n > 0) ? "" : n < 1000 ? String(n) : `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`);
+
+async function page(env, ctx) {
+  const stars = await starCount(ctx);
   const clean = (v) => String(v || "").replace(/[^\w-]/g, "");
   const token = clean(env.BEACON_TOKEN);
   const siteKey = turnstileKey(env);
@@ -276,6 +305,8 @@ function page(env) {
   const widget = siteKey ? `<div class="cf-turnstile" data-sitekey="${siteKey}" data-theme="dark"></div>` : "";
   const html = PAGE.replace("<!--BEACON-->", () => beacon + api + openpanelTag(env, nonce, "change-monitor"))
     .replace("<!--TURNSTILE-->", () => widget)
+    .replaceAll("<!--STAR_COUNT-->", () => (shortCount(stars) ? `<span class="count">${shortCount(stars)}</span>` : ""))
+    .replaceAll("__STAR_LABEL__", () => (shortCount(stars) ? `Star on GitHub, ${stars} ${stars === 1 ? "star" : "stars"}` : "Star on GitHub"))
     .replaceAll("__NONCE__", () => nonce);
   return new Response(html, {
     headers: {
@@ -292,7 +323,7 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === "/") {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { ...SECURITY, allow: "GET, HEAD" } });
-      return page(env);
+      return page(env, ctx);
     }
     if (pathname === "/llms.txt") {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { ...SECURITY, allow: "GET, HEAD" } });

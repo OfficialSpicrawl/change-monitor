@@ -1,14 +1,12 @@
-// The libraries.dev effects that are React components: border-beam on the install command, and the thinking orb.
-// Everything else on the page is plain DOM code.
+// The install command (tabs and copy) and the thinking orb. Everything else on the page is plain DOM code.
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BorderBeam } from "border-beam";
 import { ThinkingOrb } from "thinking-orbs";
 
 const REPO = "https://github.com/OfficialSpicrawl/change-monitor";
 const TABS = [
-  { id: "skill", label: "Agent skill", cmd: "npx skills add OfficialSpicrawl/change-monitor" },
-  { id: "cli", label: "CLI", cmd: `git clone ${REPO} && cd change-monitor && npm install` },
+  { id: "skill", label: "Agent skill", cmd: "npx skills add OfficialSpicrawl/change-monitor", next: "# then: npm install, export SPICRAWL_API_KEY" },
+  { id: "cli", label: "CLI", cmd: `git clone ${REPO} && cd change-monitor && npm install`, next: "# then: export SPICRAWL_API_KEY, node monitor.mjs" },
 ];
 
 async function copyText(text) {
@@ -37,14 +35,10 @@ const Icon = ({ done }) => (
   </svg>
 );
 
-// On a phone the beam is the one effect that costs real frame time, so there the command is simply a box.
-const phone = () => matchMedia("(max-width: 639px)").matches;
-
 function Install() {
   const [tab, setTab] = useState(0);
-  const [plain] = useState(phone);
   const [copied, setCopied] = useState(false);
-  const { cmd } = TABS[tab];
+  const { cmd, next } = TABS[tab];
   const copy = async () => {
     if (!(await copyText(cmd))) return;
     setCopied(true);
@@ -52,10 +46,13 @@ function Install() {
   };
   const box = (
     <div className="cmd">
-      <code>
-        <span className="prompt" aria-hidden="true">$ </span>
-        {cmd}
-      </code>
+      <div className="cmd-text">
+        <code>
+          <span className="prompt" aria-hidden="true">$ </span>
+          {cmd}
+        </code>
+        <span className="next">{next}</span>
+      </div>
       <button type="button" className="copy" onClick={copy} aria-label="Copy install command">
         <Icon done={copied} />
       </button>
@@ -63,7 +60,7 @@ function Install() {
   );
   return (
     <>
-      {plain ? box : <BorderBeam size="pulse-inner" colorVariant="mono" theme="dark" strength={1}>{box}</BorderBeam>}
+      {box}
       <div className="tabs" role="group" aria-label="Install with">
         {TABS.map((t, i) => (
           <button key={t.id} type="button" className="tab" aria-pressed={tab === i} onClick={() => { setTab(i); setCopied(false); }}>

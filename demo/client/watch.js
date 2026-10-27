@@ -346,5 +346,14 @@ export function initWatch() {
       redraw?.();
     }, 200);
   });
-  playSample(reduced.matches);
+  // Play the sample when the block is on screen, so the diff lands in view (on a phone it starts below the fold).
+  if (reduced.matches || !("IntersectionObserver" in window)) playSample(reduced.matches);
+  else {
+    const first = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      first.disconnect();
+      if (!touched) playSample(false);
+    }, { threshold: 0.6 });
+    first.observe(out);
+  }
 }

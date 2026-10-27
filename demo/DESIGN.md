@@ -6,7 +6,7 @@ Short notes so later edits stay consistent. Not an operator doc: how to run and 
 
 - Subject: change-monitor, an open-source CLI that watches web pages, prints a line diff and alerts Discord or Slack. Runs from cron, GitHub Actions or as a Claude Code / Codex agent skill.
 - Audience: developers and people who run coding agents. Job of the page: get them to install the skill, and to open a free Spicrawl key.
-- Constraints: the page is a Cloudflare Worker serving one HTML string; strict CSP (nonce, no `unsafe-inline`, no third-party hosts except the GitHub API); the Spicrawl brand is monochrome (`videos/BRAND.md`); no engine names anywhere; copy must match the README.
+- Constraints: the page is a Cloudflare Worker serving one HTML string; strict CSP (nonce, no `unsafe-inline`, no third-party hosts except the optional analytics beacon); the Spicrawl brand is monochrome (`videos/BRAND.md`); no engine names anywhere; copy must match the README.
 - Direction from the owner: clean and centered, one command as the star, lots of whitespace, mostly visual, very little text (about 90 words of prose), a headline anyone understands at first read, ascii.rest for the illustration, Geist and Geist Mono. When in doubt, remove it.
 - Scope decision: a product page earns its craft in type, layout and a few precise motions. No loader, no WebGL, no smooth-scroll library.
 
@@ -42,22 +42,21 @@ Three concepts were considered: (1) the page is a diff (chosen: it is the tool's
 - Type: Geist (UI and headings, 600, -0.03em) and Geist Mono (commands, terminal, labels), self-hosted from the `geist` package (SIL OFL 1.1). Body 16 px, 1.5. H1 `clamp(42px, 7.4vw, 80px)`. Geist Mono has no box-drawing glyphs, so the browser falls back for the frame characters; the frame rows use a tighter line height so the rules connect.
 - Layout: one centered column. Hero text is centered; the terminal block is 704 px wide and its text is left aligned. Sections are separated by whitespace, not rules or cards. The only boxes: the install command, and the ASCII frame around a diff.
 - Shape: one radius, 10 px. One hairline above the terminal and above the prompt. No glow, no gradient, no shadow.
-- Motion: ease `cubic-bezier(0.22, 1, 0.36, 1)`, 200 to 600 ms. Buttons wipe their fill in from the left and nudge the arrow. Under reduced motion every state change stays (colour, fill) and the movement goes; the sample run renders its final frame, the pulse and the URL ghost hold their first frame, the beam and the orb stop.
-- Alive: the install box breathes (border beam, desktop only: on a phone it was the one effect that cost real frame time), the pulse runs, the URL field types example pages. The sample run and the agent chat are live terminals that replay slowly while they are on screen and pause off screen; the sample stops replaying once the visitor types. Everything else is still.
+- Motion: ease `cubic-bezier(0.22, 1, 0.36, 1)`, 200 to 600 ms. Buttons wipe their fill in from the left and nudge the arrow. Under reduced motion every state change stays (colour, fill) and the movement goes; the sample run renders its final frame, the pulse and the URL ghost hold their first frame, the orb stops.
+- Alive: the pulse runs and the URL field types example pages. (A border beam on the install command was tried and cut: barely visible, and it cost frames.) The sample run and the agent chat are live terminals that replay slowly while they are on screen and pause off screen; the sample stops replaying once the visitor types. Everything else is still.
 - No hero background: a decorative texture has no job here. The pulse and the sample already tell the story, and any background would cost frames on a phone.
 
 ## Effects
 
 | Where | Library | State |
 |---|---|---|
-| Install command (hero) | `border-beam`, `pulse-inner`, `mono` | desktop only; the library pauses it off screen and under reduced motion |
 | "Checking..." line in the terminal | `thinking-orbs`, `searching`, size 20 | while a check is in flight (a live check, and the "checking" beat of the sample) |
 | Agent chat | `bot-avatars`, `droid` | `working` while the chat types and runs the command, `default` (idle) otherwise |
 | Pulse above the terminal | ascii.rest `heartbeat`, cropped to the trace and its dotted grid | always running; its first frame is in the HTML |
 | URL field before you type | ascii.rest `typewriter`, one left-aligned line | after the sample ends; stops on focus |
 | The added line of the sample diff | ascii.rest `scramble`, copied to `client/pieces` (any width, one line, faster) | once, as the diff lands |
 
-No metal text on the H1: the H1 is the LCP element and must be plain text. The beam, the orb and the bot are in three different places and never touch.
+No metal text on the H1: the H1 is the LCP element and must be plain text. The orb and the bot are in different places and never touch.
 
 ## Wireframe
 
@@ -66,8 +65,9 @@ header   [Spicrawl]                                                [GitHub icon 
 
                          Get alerted
                          when a page changes.
-              See exactly what changed, in Discord, Slack or your agent.
-         [ $ npx skills add OfficialSpicrawl/change-monitor  copy ]   [Try Spicrawl free ->]
+              See what changed, in Discord, Slack or your agent.
+         [ $ npx skills add OfficialSpicrawl/change-monitor   copy ]   [Try Spicrawl free ->]
+         [ # then: npm install, export SPICRAWL_API_KEY            ]
            Agent skill  CLI                                          Free key, 1,000 credits a month.
 
                             (pulse, ASCII)
@@ -82,7 +82,7 @@ header   [Spicrawl]                                                [GitHub icon 
          ------------------------------------------------------------------------------
          $ node monitor.mjs  https://acme.dev/pricing▌                           Run
 
-                         Ask your agent.
+                         Ask your agent.   (labelled "Sample")
               you   Watch these 3 pages. Ping Discord on change.
               [bot] $ node monitor.mjs, its output, then a check mark
 
@@ -93,7 +93,7 @@ header   [Spicrawl]                                                [GitHub icon 
 
 ## Rules this page keeps
 
-- AA contrast, one h1, visible focus, skip link, reduced motion, 390 px layout, no dashes in copy, no filler words, no invented numbers (the star count is fetched; it is hidden when unavailable or 0).
+- AA contrast, one h1, visible focus, skip link, reduced motion, 390 px layout, no dashes in copy, no filler words, no invented numbers (the star count comes from the GitHub API through the Worker's cache and is left out when unavailable or 0).
 - Copy matches `README.md` and `SKILL.md`. The sample run and the agent chat use the CLI's real output format on an invented page (`acme.dev`), and the sample is labelled "Sample run".
 - Notes live in tooltips and result states, not in paragraphs: the privacy note is the form's tooltip and a line in every real result.
 - Never name Spicrawl's internal engines on the page or in the API response.

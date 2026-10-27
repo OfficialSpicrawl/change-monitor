@@ -23,7 +23,6 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "ascii.rest": "0.4.0",
-    "border-beam": "1.4.1",
     "bot-avatars": "0.2.2",
     "esbuild": "0.28.2",
     "geist": "1.8.2",
