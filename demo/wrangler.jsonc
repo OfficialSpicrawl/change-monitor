@@ -2,20 +2,20 @@
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "spicrawl-change-monitor-demo",
   "main": "src/worker.mjs",
-  "account_id": "036bd64d65479473f0effc8c4fb126ff",
   "compatibility_date": "2026-09-26",
   "compatibility_flags": ["nodejs_compat"],
   // Serve only on the custom domain: workers.dev has no Cache API, so the credit guard would not cache there.
   "workers_dev": false,
   "preview_urls": false,
   "routes": [{ "pattern": "change-monitor.spicrawl.com", "custom_domain": true }],
-  // Create it with `npx wrangler kv namespace create SNAPSHOTS` and paste the id here.
+  // The real id is not committed: `npm run demo:deploy` fills it from the SNAPSHOTS_KV_ID environment variable.
   "kv_namespaces": [{ "binding": "SNAPSHOTS", "id": "REPLACE_WITH_KV_ID" }],
   "ratelimits": [{ "name": "LIMITER", "namespace_id": "2026102301", "simple": { "limit": 5, "period": 60 } }],
   "analytics_engine_datasets": [{ "binding": "EVENTS", "dataset": "spicrawl_demo_events" }],
   // BEACON_TOKEN: Cloudflare Web Analytics token, empty = no beacon on the page.
   // TURNSTILE_SITE_KEY: Turnstile widget site key, empty = no Turnstile (it also needs the TURNSTILE_SECRET secret).
-  "vars": { "BEACON_TOKEN": "", "TURNSTILE_SITE_KEY": "" }
+  "vars": { "TURNSTILE_SITE_KEY": "" }
+  // Secrets (not in code): `npx wrangler secret put <NAME>` for BEACON_TOKEN, OPENPANEL_CLIENT_ID and OPENPANEL_API_URL.
   // Secrets: `npx wrangler secret put SPICRAWL_API_KEY --config demo/wrangler.jsonc`
   //          `npx wrangler secret put TURNSTILE_SECRET --config demo/wrangler.jsonc` (optional)
 }

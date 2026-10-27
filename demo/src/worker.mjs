@@ -11,6 +11,7 @@ import {
   APITimeoutError,
   APIConnectionError,
 } from "@spicrawl/sdk";
+import { openpanelCsp, openpanelTag } from "./openpanel.mjs";
 import { diffLines } from "../../monitor.mjs";
 import { PAGE, RUN_COMMANDS } from "./page.mjs";
 
@@ -28,14 +29,14 @@ const PRIVATE_SUFFIX = /(^|\.)(local|localhost|internal|localdomain|lan|home\.ar
 const ERROR_CODE = /^ERR::[A-Z_]+::[A-Z_]+$/; // the only part of a Spicrawl error a visitor is shown
 const SECURITY = { "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin" };
 
-const csp = (nonce, turnstile) =>
+const csp = (nonce, turnstile, op = { script: "", connect: "" }) =>
   [
     "default-src 'none'",
-    `script-src 'nonce-${nonce}' https://static.cloudflareinsights.com${turnstile ? " https://challenges.cloudflare.com" : ""}`,
+    `script-src 'nonce-${nonce}' https://static.cloudflareinsights.com${turnstile ? " https://challenges.cloudflare.com" : ""}${op.script}`,
     `style-src 'nonce-${nonce}' https://fonts.googleapis.com`,
     "font-src https://fonts.gstatic.com",
     "img-src data:",
-    "connect-src 'self' https://cloudflareinsights.com",
+    `connect-src 'self' https://cloudflareinsights.com${op.connect}`,
     ...(turnstile ? ["frame-src https://challenges.cloudflare.com"] : []),
     "base-uri 'none'",
     "form-action 'none'",
@@ -256,7 +257,7 @@ function page(env) {
     : "";
   const api = siteKey ? `<script async defer src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>` : "";
   const widget = siteKey ? `<div class="cf-turnstile" data-sitekey="${siteKey}" data-theme="dark"></div>` : "";
-  const html = PAGE.replace("<!--BEACON-->", () => beacon + api)
+  const html = PAGE.replace("<!--BEACON-->", () => beacon + api + openpanelTag(env, nonce, "change-monitor"))
     .replace("<!--TURNSTILE-->", () => widget)
     .replaceAll("__NONCE__", () => nonce);
   return new Response(html, {
@@ -264,7 +265,7 @@ function page(env) {
       ...SECURITY,
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-cache", // the nonce is per response, so a shared cache must not replay it
-      "content-security-policy": csp(nonce, Boolean(siteKey)),
+      "content-security-policy": csp(nonce, Boolean(siteKey), openpanelCsp(env)),
     },
   });
 }

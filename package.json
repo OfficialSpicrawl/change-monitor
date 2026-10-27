@@ -11,7 +11,7 @@
     "start": "node monitor.mjs",
     "test": "node --test monitor.test.mjs demo/test/worker.test.mjs",
     "demo:dev": "wrangler dev --config demo/wrangler.jsonc",
-    "demo:deploy": "wrangler deploy --config demo/wrangler.jsonc"
+    "demo:deploy": "node scripts/demo-config.mjs && wrangler deploy --config demo/wrangler.local.jsonc"
   },
   "engines": {
     "node": ">=18"
