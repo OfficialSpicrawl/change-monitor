@@ -13,7 +13,7 @@ import {
 } from "@spicrawl/sdk";
 import { openpanelCsp, openpanelTag } from "./openpanel.mjs";
 import { diffLines } from "../../monitor.mjs";
-import { PAGE, RUN_COMMANDS } from "./page.mjs";
+import { LLMS_TXT, NOT_FOUND, PAGE, RUN_COMMANDS } from "./page.mjs";
 
 const MIN_CREDITS = 100; // below this the demo stops scraping and points people at the CLI
 const PACE_SLACK = 0.05; // a day's spend may run this share of the monthly limit ahead of an even pace
@@ -21,6 +21,10 @@ const MAX_COST = 1; // credits one check may cost; Spicrawl refuses anything dea
 const MAX_BODY = 4096;
 const SUMMARY_KEY = "https://cache.internal/usage-summary"; // synthetic: only ever a Cache API key, never fetched
 const SUMMARY_TTL = 60;
+const STARS_KEY = "https://cache.internal/github-stars"; // synthetic: only ever a Cache API key, never fetched
+const STARS_TTL = 3600;
+const STARS_RETRY = 300; // after a failure, ask GitHub again in five minutes
+const STARS_API = "https://api.github.com/repos/OfficialSpicrawl/change-monitor";
 const SNAPSHOT_TTL = 7 * 24 * 3600;
 const TURNSTILE_API = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 // ponytail: only the first 200 KB of a page is stored and compared, so a change past it is invisible.
@@ -32,10 +36,11 @@ const SECURITY = { "x-content-type-options": "nosniff", "referrer-policy": "stri
 const csp = (nonce, turnstile, op = { script: "", connect: "" }) =>
   [
     "default-src 'none'",
-    `script-src 'nonce-${nonce}' https://static.cloudflareinsights.com${turnstile ? " https://challenges.cloudflare.com" : ""}${op.script}`,
-    `style-src 'nonce-${nonce}' https://fonts.googleapis.com`,
-    "font-src https://fonts.gstatic.com",
-    "img-src data:",
+    // 'self' is the page's own bundle (/app.js and its chunks, served as static assets); inline code still needs the nonce.
+    `script-src 'nonce-${nonce}' 'self' https://static.cloudflareinsights.com${turnstile ? " https://challenges.cloudflare.com" : ""}${op.script}`,
+    `style-src 'nonce-${nonce}'`,
+    "font-src 'self'", // Geist and Geist Mono, served from /fonts
+    "img-src 'self' data:", // the wordmark, and the inline favicon
     `connect-src 'self' https://cloudflareinsights.com${op.connect}`,
     ...(turnstile ? ["frame-src https://challenges.cloudflare.com"] : []),
     "base-uri 'none'",
@@ -52,7 +57,7 @@ const json = (body, status = 200, headers = {}) =>
 // A failed check: `http` is the response status, `status` the outcome shown in the UI and logged.
 const fail = (http, status, message, extra = {}, headers = {}) => ({ http, body: { status, message, ...extra }, headers });
 const noCredits = () =>
-  fail(503, "no_credits", "The demo has used its credits for this month — run it yourself with a free key", {
+  fail(503, "no_credits", "The demo has used its credits for this month. Run it yourself with a free key.", {
     commands: RUN_COMMANDS,
   });
 const paced = () =>
@@ -199,7 +204,8 @@ async function check(request, env, ctx, ev) {
     cache: false, // a cached copy would hide changes
   });
   ev.credits = page._meta.creditsCharged ?? 0;
-  const base = { url, credits: ev.credits, engine: page._meta.engine, targetStatus: page.targetStatus };
+  // No engine field: which engine Spicrawl picked is internal and is never shown to visitors.
+  const base = { url, credits: ev.credits, targetStatus: page.targetStatus };
 
   // Only a 200 is a page worth keeping. Anything else (a block page, an outage, a 202/206 that Spicrawl may bill at 0)
   // leaves the last good snapshot alone.
@@ -247,7 +253,47 @@ function describe(err, apiKey) {
   return fail(500, "error", "Something went wrong on our side. Please try again.");
 }
 
-function page(env) {
+/** The designed 404: styled like the page, no script. */
+function notFound() {
+  const nonce = btoa(randomUUID());
+  return new Response(NOT_FOUND.replaceAll("__NONCE__", () => nonce), {
+    status: 404,
+    headers: {
+      ...SECURITY,
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-cache",
+      "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    },
+  });
+}
+
+/** The repo's star count for the "Star on GitHub" buttons, or null. One GitHub call an hour, kept with the Cache API. */
+async function starCount(ctx) {
+  try {
+    const hit = await caches.default.match(STARS_KEY);
+    if (hit) return (await hit.json()).stars;
+    let stars = null;
+    try {
+      const res = await fetch(STARS_API, {
+        headers: { accept: "application/vnd.github+json", "user-agent": "spicrawl-change-monitor-demo" },
+        signal: AbortSignal.timeout(2000),
+      });
+      const n = res.ok ? (await res.json()).stargazers_count : null;
+      if (Number.isInteger(n) && n >= 0) stars = n;
+    } catch {}
+    const ttl = stars === null ? STARS_RETRY : STARS_TTL;
+    ctx.waitUntil(caches.default.put(STARS_KEY, new Response(JSON.stringify({ stars }), { headers: { "cache-control": `max-age=${ttl}` } })).catch(() => {}));
+    return stars;
+  } catch {
+    return null;
+  }
+}
+
+/** The count as it is written on a button: 12, 1.2k. Nothing for 0 or unknown, so there is never a lonely "0". */
+const shortCount = (n) => (!(n > 0) ? "" : n < 1000 ? String(n) : `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`);
+
+async function page(env, ctx) {
+  const stars = await starCount(ctx);
   const clean = (v) => String(v || "").replace(/[^\w-]/g, "");
   const token = clean(env.BEACON_TOKEN);
   const siteKey = turnstileKey(env);
@@ -259,6 +305,8 @@ function page(env) {
   const widget = siteKey ? `<div class="cf-turnstile" data-sitekey="${siteKey}" data-theme="dark"></div>` : "";
   const html = PAGE.replace("<!--BEACON-->", () => beacon + api + openpanelTag(env, nonce, "change-monitor"))
     .replace("<!--TURNSTILE-->", () => widget)
+    .replaceAll("<!--STAR_COUNT-->", () => (shortCount(stars) ? `<span class="count">${shortCount(stars)}</span>` : ""))
+    .replaceAll("__STAR_LABEL__", () => (shortCount(stars) ? `Star on GitHub, ${stars} ${stars === 1 ? "star" : "stars"}` : "Star on GitHub"))
     .replaceAll("__NONCE__", () => nonce);
   return new Response(html, {
     headers: {
@@ -275,9 +323,15 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === "/") {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { ...SECURITY, allow: "GET, HEAD" } });
-      return page(env);
+      return page(env, ctx);
     }
-    if (pathname !== "/api/check") return new Response("Not found", { status: 404, headers: SECURITY });
+    if (pathname === "/llms.txt") {
+      if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { ...SECURITY, allow: "GET, HEAD" } });
+      return new Response(LLMS_TXT, { headers: { ...SECURITY, "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
+    }
+    if (pathname !== "/api/check") {
+      return request.method === "GET" || request.method === "HEAD" ? notFound() : new Response("Not found", { status: 404, headers: SECURITY });
+    }
     if (request.method !== "POST") return json({ status: "error", message: "Use POST." }, 405, { allow: "POST" });
 
     const started = Date.now();

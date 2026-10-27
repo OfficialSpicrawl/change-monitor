@@ -9,6 +9,7 @@ const KEY = "spicrawl_test_SECRET_do_not_leak";
 const V1 = "# Pricing\n\nFree plan: $0\nPro plan: $20\n";
 const V2 = "# Pricing\n\nFree plan: $0\nPro plan: $25\nNew: Team plan\n";
 const sha = (s) => createHash("sha256").update(s).digest("hex");
+const ENGINE_NAMES = /moli|chromium|chrome|camoufox|obscura|browserless|headful|headless|playwright|puppeteer/i;
 
 let api; // what the stubbed Spicrawl API does next
 let calls; // requests the stub saw
@@ -28,8 +29,10 @@ const reset = () => {
     summaryPatch: {}, // fields overwritten on the allowance, to make it malformed
     scrape: { body: V1, targetStatus: 200, engine: "fetch", credits: 1 },
     scrapeError: null, // [httpStatus, problem body]
+    github: { stargazers_count: 12 }, // what the GitHub API answers for the star count; an Error is thrown
+    githubStatus: 200,
   };
-  calls = { summary: 0, scrape: [], turnstile: [] };
+  calls = { summary: 0, scrape: [], turnstile: [], github: 0 };
   kv = new Map();
   kvPuts = 0;
   kvPutFails = false;
@@ -49,6 +52,11 @@ globalThis.caches = {
 
 const DAY = 86_400_000;
 globalThis.fetch = async (url, init) => {
+  if (String(url) === "https://api.github.com/repos/OfficialSpicrawl/change-monitor") {
+    calls.github++;
+    if (api.github instanceof Error) throw api.github;
+    return new Response(JSON.stringify(api.github), { status: api.githubStatus, headers: { "content-type": "application/json" } });
+  }
   if (String(url) === "https://challenges.cloudflare.com/turnstile/v0/siteverify") {
     calls.turnstile.push(Object.fromEntries(init.body));
     if (api.turnstile instanceof Error) throw api.turnstile;
@@ -138,10 +146,14 @@ test("GET / serves the page; the beacon appears only with a token", async () => 
   const off = await get(makeEnv());
   assert.equal(off.res.status, 200);
   assert.match(off.res.headers.get("content-type"), /text\/html/);
-  assert.match(off.html, /Run it yourself/);
-  assert.match(off.html, /git clone https:\/\/github\.com\/OfficialSpicrawl\/change-monitor\.git/);
+  assert.equal((off.html.match(/<h1[ >]/g) || []).length, 1, "one h1");
+  assert.match(off.html, /npx skills add OfficialSpicrawl\/change-monitor/);
+  assert.match(off.html, /git clone https:\/\/github\.com\/OfficialSpicrawl\/change-monitor &amp;&amp; cd change-monitor &amp;&amp; npm install/, "the CLI install is in the HTML, not only in the script");
   assert.match(off.html, /node monitor\.mjs/);
-  assert.match(off.html, /href="https:\/\/app\.spicrawl\.com"/);
+  assert.match(off.html, /<a class="btn btn-solid" href="https:\/\/app\.spicrawl\.com" rel="noopener">Try Spicrawl free/);
+  assert.equal((off.html.match(/<a class="btn btn-line star[^"]*" href="https:\/\/github\.com\/OfficialSpicrawl\/change-monitor"/g) || []).length, 2, "Star on GitHub in the header and at the end");
+  assert.match(off.html, /<script type="module" src="\/app\.js"><\/script>/);
+  assert.doesNotMatch(off.html, ENGINE_NAMES, "the page never names Spicrawl's internal engines");
   assert.doesNotMatch(off.html, /cloudflareinsights|<!--BEACON-->/);
 
   const on = await get(makeEnv({ BEACON_TOKEN: "abc123" }));
@@ -150,11 +162,67 @@ test("GET / serves the page; the beacon appears only with a token", async () => 
   assert.doesNotMatch(evil.html, /alert\(1\)/);
 });
 
+test("the star count is asked of GitHub once an hour, written into the page, and left out when 0 or unknown", async () => {
+  const get = async () => {
+    const c = ctx();
+    const res = await worker.fetch(new Request("https://change-monitor.spicrawl.com/"), makeEnv(), c);
+    await c.settle();
+    assert.equal(res.status, 200);
+    return res.text();
+  };
+  const counts = (html) => (html.match(/<span class="count">/g) || []).length;
+  let html = await get();
+  assert.equal(calls.github, 1);
+  assert.equal(counts(html), 2, "the header button and the final one");
+  assert.match(html, /<span class="count">12<\/span>/);
+  assert.match(html, /aria-label="Star on GitHub, 12 stars"/);
+  await get();
+  assert.equal(calls.github, 1, "the second page view is served from the Cache API");
+
+  cacheStore.clear();
+  api.github = { stargazers_count: 1234 };
+  assert.match(await get(), /<span class="count">1\.2k<\/span>/);
+  cacheStore.clear();
+  api.github = { stargazers_count: 1 };
+  assert.match(await get(), /aria-label="Star on GitHub, 1 star"/);
+
+  for (const answer of [{ stargazers_count: 0 }, { message: "rate limited" }, new Error("offline"), { stargazers_count: "many" }]) {
+    cacheStore.clear();
+    api.github = answer;
+    api.githubStatus = answer.message ? 403 : 200;
+    calls.github = 0;
+    html = await get();
+    assert.equal(counts(html), 0, JSON.stringify(answer));
+    assert.match(html, /aria-label="Star on GitHub"/);
+    assert.doesNotMatch(html, /<!--STAR_COUNT-->|__STAR_LABEL__/);
+    await get();
+    assert.equal(calls.github, 1, "a failure is not retried on every page view");
+  }
+});
+
 test("routing: unknown path 404, wrong method 405", async () => {
   const run = (path, method) => worker.fetch(new Request(`https://x.test${path}`, { method }), makeEnv(), ctx());
-  assert.equal((await run("/nope", "GET")).status, 404);
+  const lost = await run("/nope", "GET");
+  assert.equal(lost.status, 404);
+  assert.match(lost.headers.get("content-type"), /text\/html/);
+  assert.match(await lost.text(), /<title>Page not found/, "a designed 404, not a bare line");
+  assert.equal((await run("/nope", "POST")).status, 404);
   assert.equal((await run("/api/check", "GET")).status, 405);
   assert.equal((await run("/", "POST")).status, 405);
+});
+
+test("GET /llms.txt: the page's facts as plain text for agents", async () => {
+  const get = (method = "GET") => worker.fetch(new Request("https://x.test/llms.txt", { method }), makeEnv(), ctx());
+  const res = await get();
+  const text = await res.text();
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /^text\/plain/);
+  assert.equal(res.headers.get("x-content-type-options"), "nosniff");
+  assert.match(text, /npx skills add OfficialSpicrawl\/change-monitor/);
+  assert.match(text, /SPICRAWL_API_KEY/);
+  assert.match(text, /DISCORD_WEBHOOK_URL/);
+  assert.doesNotMatch(text, ENGINE_NAMES);
+  assert.equal((await get("POST")).status, 405);
 });
 
 test("every response carries nosniff: page, JSON results, 404 and 405", async () => {
@@ -171,7 +239,7 @@ test("every response carries nosniff: page, JSON results, 404 and 405", async ()
   for (const res of responses) assert.equal(res.headers.get("x-content-type-options"), "nosniff", String(res.status));
 });
 
-test("CSP: a fresh nonce per response, no unsafe-inline, fonts and the beacon still allowed", async () => {
+test("CSP: a fresh nonce per response, no unsafe-inline, self-hosted fonts, the beacon still allowed", async () => {
   const get = async () => {
     const res = await worker.fetch(new Request("https://change-monitor.spicrawl.com/"), makeEnv({ BEACON_TOKEN: "abc123" }), ctx());
     return { csp: res.headers.get("content-security-policy"), html: await res.text(), res };
@@ -180,15 +248,19 @@ test("CSP: a fresh nonce per response, no unsafe-inline, fonts and the beacon st
   const nonceOf = (csp) => csp.match(/script-src 'nonce-([^']+)'/)[1];
   assert.notEqual(nonceOf(a.csp), nonceOf(b.csp));
   assert.doesNotMatch(a.csp, /unsafe-inline|unsafe-eval/);
-  assert.match(a.csp, new RegExp(`style-src 'nonce-${nonceOf(a.csp).replace(/[+/=]/g, "\\$&")}' https://fonts\\.googleapis\\.com`));
+  assert.match(a.csp, new RegExp(`style-src 'nonce-${nonceOf(a.csp).replace(/[+/=]/g, "\\$&")}'(;|$)`), "inline style only with the nonce");
+  assert.match(a.csp, /script-src [^;]*'self'/, "the page's own bundle");
   assert.match(a.csp, /script-src [^;]*https:\/\/static\.cloudflareinsights\.com/);
-  assert.match(a.csp, /font-src https:\/\/fonts\.gstatic\.com/);
-  assert.match(a.csp, /connect-src 'self' https:\/\/cloudflareinsights\.com/);
+  assert.match(a.csp, /font-src 'self'(;|$)/, "Geist is self-hosted");
+  assert.doesNotMatch(a.csp, /googleapis|gstatic/, "no third-party font host");
+  assert.match(a.csp, /connect-src 'self' https:\/\/cloudflareinsights\.com(;|$)/);
+  assert.doesNotMatch(a.csp, /api\.github\.com/, "the Worker fetches the star count, the browser does not");
   assert.doesNotMatch(a.csp, /challenges\.cloudflare\.com/, "Turnstile is off");
   assert.equal(a.res.headers.get("cache-control"), "no-cache");
-  // The nonce in the header is the one on the inline script and style, and there are no other inline blocks.
+  // The nonce in the header is the one on the inline style. The only inline script is the JSON-LD data block, which the
+  // browser never runs.
   const n = nonceOf(a.csp);
-  assert.equal([...a.html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)].map((m) => m[0]).join(), `<script nonce="${n}">`);
+  assert.equal([...a.html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)].map((m) => m[0]).join(), `<script type="application/ld+json">`);
   assert.equal([...a.html.matchAll(/<style[^>]*>/g)].map((m) => m[0]).join(), `<style nonce="${n}">`);
   assert.doesNotMatch(a.html, /__NONCE__|\sstyle=|\sonclick=|javascript:/);
   assert.ok(!b.html.includes(n));
@@ -271,7 +343,7 @@ test("lifecycle: baseline, unchanged, changed with diff", async () => {
   assert.equal(res.status, 200);
   assert.equal(data.status, "baseline");
   assert.equal(data.credits, 1);
-  assert.equal(data.engine, "fetch");
+  assert.equal("engine" in data, false, "the engine is internal and is not returned");
   // The CLI's call, minus mode:"auto": the demo sends one plain fetch that may cost 1 credit, never an escalation.
   assert.deepEqual(calls.scrape[0], {
     url,
@@ -315,7 +387,7 @@ test("target status >= 400 is blocked and writes no snapshot", async () => {
   assert.equal(data.status, "blocked");
   assert.equal(data.targetStatus, 403);
   assert.equal(data.credits, 3);
-  assert.equal(data.engine, "obscura");
+  assert.doesNotMatch(JSON.stringify(data), ENGINE_NAMES, "no engine name in the answer");
   assert.match(data.commands, /node monitor\.mjs/, "a blocked site is pointed at the CLI");
   assert.match(data.message, /CLI escalates/);
   assert.equal(kv.get(sha(url)).value, before);
@@ -539,7 +611,7 @@ test("credit guard: under 100 credits refuses with the clone commands", async ()
   assert.equal(res.status, 503);
   assert.equal(data.status, "no_credits");
   assert.match(data.message, /used its credits for this month/);
-  assert.match(data.message, /run it yourself with a free key/);
+  assert.match(data.message, /Run it yourself with a free key/);
   assert.match(data.commands, /git clone https:\/\/github\.com\/OfficialSpicrawl\/change-monitor\.git/);
   assert.match(data.commands, /npm install/);
   assert.match(data.commands, /node monitor\.mjs/);

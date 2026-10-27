@@ -4,3 +4,6 @@ node_modules/
 .wrangler/
 .monitor-state.json
 demo/wrangler.local.jsonc
+demo/public/*
+!demo/public/robots.txt
+!demo/public/sitemap.xml
