@@ -26,7 +26,7 @@
     "ascii.rest": "0.4.0",
     "bot-avatars": "0.2.2",
     "esbuild": "0.28.2",
-    "geist": "1.8.2",
+    "geist": "1.9.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "thinking-orbs": "0.3.2",
